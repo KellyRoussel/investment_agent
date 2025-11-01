@@ -8,7 +8,7 @@ from sqlalchemy import Column, String, Boolean, Enum as SQLEnum, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from .base import BaseModel
+from .base import BaseModel, GUID
 
 
 class RiskTolerance(PyEnum):
@@ -93,21 +93,6 @@ class User(BaseModel):
         "PortfolioSnapshot",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select"
-    )
-    
-    recommendations = relationship(
-        "Recommendation",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        lazy="select"
-    )
-    
-    user_preferences = relationship(
-        "UserPreferences",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        uselist=False,
         lazy="select"
     )
     

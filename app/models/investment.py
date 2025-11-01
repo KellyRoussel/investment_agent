@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from .base import BaseModel
+from .base import BaseModel, GUID
 
 
 class AssetType(PyEnum):
@@ -41,7 +41,7 @@ class Investment(BaseModel):
     
     # Relations
     user_id = Column(
-        UUID(as_uuid=True),
+        GUID,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

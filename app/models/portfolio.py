@@ -4,11 +4,11 @@ Modèle de base de données pour les snapshots de portfolio.
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Column, Integer, Date, String, ForeignKey
+from sqlalchemy import Column, Integer, Date, String, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
-from .base import BaseModel
+from .base import BaseModel, GUID
 
 
 class PortfolioSnapshot(BaseModel):
@@ -23,7 +23,7 @@ class PortfolioSnapshot(BaseModel):
     
     # Relations
     user_id = Column(
-        UUID(as_uuid=True),
+        GUID,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
