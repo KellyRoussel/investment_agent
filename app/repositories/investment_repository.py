@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from models.investment import Investment, AssetType, MarketCapCategory
+from app.models.investment import Investment, AssetType, MarketCapCategory
 
 
 class InvestmentRepository:

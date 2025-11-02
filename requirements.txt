@@ -5,3 +5,7 @@ pydantic>=2.10.0
 sqlalchemy>=2.0.36
 alembic>=1.14.0
 psycopg>=3.2.0
+streamlit>=1.25.0
+openai
+jinja2
+openai-agents

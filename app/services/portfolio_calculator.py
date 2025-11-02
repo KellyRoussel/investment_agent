@@ -7,9 +7,9 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from domain.entities import Investment, Portfolio
-from domain.value_objects import Money, Percentage
-from models.investment import Investment as InvestmentModel
+from app.domain.entities import Investment, Portfolio
+from app.domain.value_objects import Money, Percentage
+from app.models.investment import Investment as InvestmentModel
 
 
 class PortfolioCalculator:
