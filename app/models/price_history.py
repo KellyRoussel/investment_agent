@@ -124,7 +124,7 @@ class PriceHistory(BaseModel):
     
     # Relations
     investment = relationship(
-        "Investment",
+        "DBInvestment",
         back_populates="price_history",
         lazy="select"
     )

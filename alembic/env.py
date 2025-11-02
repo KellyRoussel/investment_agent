@@ -9,7 +9,7 @@ from alembic import context
 # Import your models here
 from app.models.base import Base
 from app.models.user import User
-from app.models.investment import Investment
+from app.models.investment import DBInvestment
 from app.models.price_history import PriceHistory
 from app.models.transaction import InvestmentTransaction
 from app.models.portfolio import PortfolioSnapshot

@@ -103,7 +103,7 @@ class InvestmentTransaction(BaseModel):
     
     # Relations
     investment = relationship(
-        "Investment",
+        "DBInvestment",
         back_populates="transactions",
         lazy="select"
     )

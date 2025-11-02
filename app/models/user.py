@@ -83,7 +83,7 @@ class User(BaseModel):
     
     # Relations
     investments = relationship(
-        "Investment",
+        "DBInvestment",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select"

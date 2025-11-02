@@ -1,18 +1,18 @@
+from typing import Dict
 from agents import Agent, Runner
-import asyncio
 import os
 
 from jinja2 import Template
-
-from app.models.investment import Investment
-
-
-os.environ["OPENAI_API_KEY"] = "OPENAI_API_KEY_REMOVED"
+from domain.entities.investment import Investment
+from prompts.orchestrator import orchestrator_prompt_template
 
 
-async def launch_agents(user_portfolio, portfolio_metrics):
-    with open("../prompts/orchestrator.txt", "r") as file:
-        orchestrator_instructions = Template(file.read()).render(user_portfolio, portfolio_metrics)
+os.environ["OPENAI_API_KEY"] = "your_openai_api_key_here"
+
+
+async def launch_agents(user_portfolio: list[Investment], portfolio_metrics: Dict):
+
+    orchestrator_instructions = Template(orchestrator_prompt_template).render(user_portfolio=user_portfolio, portfolio_metrics=portfolio_metrics)
 
     trend_search_agent = Agent(
         name="Trend Search Agent",

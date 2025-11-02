@@ -12,6 +12,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from domain.entities.investment import Investment
+from domain.value_objects.money import Money
+from domain.value_objects.percentage import Percentage
+
 from .base import BaseModel, GUID
 
 
@@ -34,7 +38,7 @@ class MarketCapCategory(PyEnum):
     MICRO_CAP = "micro_cap"      # < $300M
 
 
-class Investment(BaseModel):
+class DBInvestment(BaseModel):
     """Modèle investissement."""
     
     __tablename__ = "investments"
@@ -212,3 +216,25 @@ class Investment(BaseModel):
     
     def __repr__(self) -> str:
         return f"<Investment(id={self.id}, symbol='{self.symbol}', name='{self.name}', user_id={self.user_id})>"
+    
+    def to_domain(self) -> Investment:
+        return Investment(
+            id=self.id,
+            symbol=self.symbol,
+            name=self.name,
+            user_id=self.user_id,
+            asset_type=self.asset_type,
+            country=self.country,
+            purchase_date=self.purchase_date,
+            purchase_price=Money(amount=self.purchase_price, currency=self.currency),
+            quantity=self.quantity,
+            currency=self.currency,
+            current_price=Money(amount=self.current_price, currency=self.currency),
+            sector=self.sector,
+            industry=self.industry,
+            market_cap_category=self.market_cap_category,
+            dividend_yield=Percentage(self.dividend_yield) if self.dividend_yield is not None else None,
+            expense_ratio=Percentage(self.expense_ratio) if self.expense_ratio is not None else None,
+            notes=self.notes,
+            is_active=self.is_active
+        )

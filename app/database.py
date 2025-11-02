@@ -17,7 +17,7 @@ DATABASE_URL = os.getenv(
 # Create engine
 engine = create_engine(
     DATABASE_URL,
-    echo=True,  # Set to False in production
+    echo=False,  # Set to False in production
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20
@@ -27,7 +27,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine,   
 )
 
 

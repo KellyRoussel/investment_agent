@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.investment import Investment, AssetType, MarketCapCategory
+from models.investment import DBInvestment, AssetType, MarketCapCategory
 
 
 class InvestmentRepository:
@@ -35,7 +35,7 @@ class InvestmentRepository:
         dividend_yield: Optional[Decimal] = None,
         expense_ratio: Optional[Decimal] = None,
         notes: Optional[str] = None
-    ) -> Investment:
+    ) -> DBInvestment:
         """
         Create a new investment.
         
@@ -60,7 +60,7 @@ class InvestmentRepository:
         Returns:
             Created Investment instance
         """
-        investment = Investment(
+        investment = DBInvestment(
             user_id=user_id,
             symbol=symbol,
             name=name,
@@ -83,7 +83,7 @@ class InvestmentRepository:
         self.db.refresh(investment)
         return investment
     
-    def get_by_id(self, investment_id: UUID) -> Optional[Investment]:
+    def get_by_id(self, investment_id: UUID) -> Optional[DBInvestment]:
         """
         Get investment by ID.
         
@@ -93,7 +93,7 @@ class InvestmentRepository:
         Returns:
             Investment instance or None if not found
         """
-        return self.db.query(Investment).filter(Investment.id == investment_id).first()
+        return self.db.query(DBInvestment).filter(DBInvestment.id == investment_id).first()
     
     def get_by_user(
         self, 
@@ -101,7 +101,7 @@ class InvestmentRepository:
         active_only: bool = True,
         skip: int = 0, 
         limit: int = 100
-    ) -> List[Investment]:
+    ) -> List[DBInvestment]:
         """
         Get all investments for a user.
         
@@ -114,10 +114,10 @@ class InvestmentRepository:
         Returns:
             List of Investment instances
         """
-        query = self.db.query(Investment).filter(Investment.user_id == user_id)
+        query = self.db.query(DBInvestment).filter(DBInvestment.user_id == user_id)
         
         if active_only:
-            query = query.filter(Investment.is_active == True)
+            query = query.filter(DBInvestment.is_active == True)
         
         return query.offset(skip).limit(limit).all()
     
@@ -125,7 +125,7 @@ class InvestmentRepository:
         self, 
         user_id: UUID, 
         symbol: str
-    ) -> List[Investment]:
+    ) -> List[DBInvestment]:
         """
         Get all investments for a specific symbol.
         
@@ -136,17 +136,17 @@ class InvestmentRepository:
         Returns:
             List of Investment instances
         """
-        return self.db.query(Investment).filter(
-            Investment.user_id == user_id,
-            Investment.symbol == symbol,
-            Investment.is_active == True
+        return self.db.query(DBInvestment).filter(
+            DBInvestment.user_id == user_id,
+            DBInvestment.symbol == symbol,
+            DBInvestment.is_active == True
         ).all()
     
     def get_by_asset_type(
         self, 
         user_id: UUID, 
         asset_type: AssetType
-    ) -> List[Investment]:
+    ) -> List[DBInvestment]:
         """
         Get all investments of a specific asset type.
         
@@ -157,17 +157,17 @@ class InvestmentRepository:
         Returns:
             List of Investment instances
         """
-        return self.db.query(Investment).filter(
-            Investment.user_id == user_id,
-            Investment.asset_type == asset_type,
-            Investment.is_active == True
+        return self.db.query(DBInvestment).filter(
+            DBInvestment.user_id == user_id,
+            DBInvestment.asset_type == asset_type,
+            DBInvestment.is_active == True
         ).all()
     
     def update_current_price(
         self, 
         investment_id: UUID, 
         current_price: Decimal
-    ) -> Optional[Investment]:
+    ) -> Optional[DBInvestment]:
         """
         Update the current price of an investment.
         
@@ -185,7 +185,7 @@ class InvestmentRepository:
             self.db.refresh(investment)
         return investment
     
-    def update(self, investment: Investment) -> Investment:
+    def update(self, investment: DBInvestment) -> DBInvestment:
         """
         Update investment.
         
