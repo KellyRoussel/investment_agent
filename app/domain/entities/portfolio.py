@@ -30,7 +30,7 @@ class TopPerformer(BaseModel):
     gain_loss_percent: Percentage = Field(..., description="Gain/perte en pourcentage")
 
 
-class Portfolio(BaseModel):
+class DBPortfolio(BaseModel):
     """Entité Portfolio représentant le portfolio complet d'un utilisateur."""
     
     # Identifiants

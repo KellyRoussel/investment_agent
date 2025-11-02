@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Optional, List
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from ..value_objects import Money, Percentage
 
@@ -72,20 +72,20 @@ class Investment(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Date de création")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Date de dernière mise à jour")
     
-    @validator('symbol')
+    @field_validator('symbol')
     def validate_symbol(cls, v):
         # Validation basique du symbole
         if not v.replace('-', '').replace('.', '').isalnum():
             raise ValueError('Le symbole ne peut contenir que des lettres, chiffres, tirets et points')
         return v.upper()
     
-    @validator('country')
+    @field_validator('country')
     def validate_country(cls, v):
         if not v.isalpha() or not v.isupper():
             raise ValueError('Le code pays doit être un code ISO 3166-1 alpha-3 en majuscules')
         return v
     
-    @validator('purchase_date')
+    @field_validator('purchase_date')
     def validate_purchase_date(cls, v):
         if v > date.today():
             raise ValueError('La date d\'achat ne peut pas être dans le futur')

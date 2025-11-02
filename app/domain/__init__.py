@@ -9,7 +9,7 @@ __all__ = [
     'Investment',
     'AssetType',
     'MarketCapCategory',
-    'Portfolio',
+    'DBPortfolio',
     'PortfolioBreakdown',
     'TopPerformer',
     
