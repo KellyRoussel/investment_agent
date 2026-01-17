@@ -8,8 +8,8 @@ from uuid import UUID
 
 from pydantic import Field, validator
 
-from ..domain.entities import AssetType, MarketCapCategory
-from ..domain.value_objects import Money, Percentage
+from app.domain.entities import AssetType, MarketCapCategory
+from app.domain.value_objects import Money, Percentage
 from .base import BaseSchema, TimestampSchema, IDSchema
 
 

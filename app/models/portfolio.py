@@ -1,9 +1,6 @@
 """
 Modèle de base de données pour les snapshots de portfolio.
 """
-from datetime import date
-from typing import Optional
-
 from sqlalchemy import Column, Integer, Date, String, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship

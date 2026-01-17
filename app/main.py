@@ -1,46 +1,17 @@
+import os
+import sys
 
-import asyncio
+from fastapi import FastAPI
 
-from services.ai_agents import launch_agents
-from database import SessionLocal
-from repositories import InvestmentRepository
-from services.portfolio_calculator import PortfolioCalculator
-
-
+from app.api.endpoints.investments import router as investments_router
+from app.api.endpoints.portfolio import router as portfolio_router
 
 
-async def main():
-    """Main demo script."""
-    
-    
-    # Get database session
-    db = SessionLocal()
-    
-    try:
-        # Initialize repositories
-        investment_repo = InvestmentRepository(db)
-        portfolio_calculator = PortfolioCalculator(db)
-        
-        investments_list = investment_repo.get_by_user("14f76fb0-96d2-49d5-84e7-e0f5a7f05cd4")
-        domain_list =[i.to_domain() for i in investments_list]
-        
-        
-        # Calculate portfolio metrics
-        metrics = portfolio_calculator.calculate_portfolio_metrics("14f76fb0-96d2-49d5-84e7-e0f5a7f05cd4")
-        
-        result = await launch_agents(domain_list, metrics)
-        print("\n[AGENT OUTPUT]")
-        print(result)
-    except Exception as e:
-        print(f"\n[ERROR] Error during demo: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    finally:
-        db.close()
 
+from app.services.portfolio_calculator import PortfolioCalculator
 
-if __name__ == "__main__":
+app = FastAPI(title="Investment Agent API")
+app.include_router(investments_router)
+app.include_router(portfolio_router)
 
-    asyncio.run(main())
 

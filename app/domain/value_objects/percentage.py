@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, validator
 class Percentage(BaseModel):
     """Value Object pour représenter un pourcentage."""
     
-    value: Decimal = Field(..., decimal_places=4, description="Valeur du pourcentage")
+    value: float = Field(..., description="Valeur du pourcentage")
     
     @validator('value')
     def validate_value(cls, v):

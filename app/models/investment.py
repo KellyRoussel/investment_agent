@@ -12,9 +12,9 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from domain.entities.investment import Investment
-from domain.value_objects.money import Money
-from domain.value_objects.percentage import Percentage
+from app.domain.entities.investment import Investment
+from app.domain.value_objects.money import Money
+from app.domain.value_objects.percentage import Percentage
 
 from .base import BaseModel, GUID
 

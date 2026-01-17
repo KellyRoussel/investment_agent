@@ -7,7 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from models.investment import DBInvestment as InvestmentModel
+from app.models.investment import DBInvestment as InvestmentModel
 
 
 class PortfolioCalculator:

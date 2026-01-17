@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import Field, validator
 
-from ..domain.entities import AssetType
+from app.domain.entities import AssetType
 from .base import BaseSchema, TimestampSchema, IDSchema
 
 

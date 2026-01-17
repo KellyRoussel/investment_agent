@@ -1,10 +1,7 @@
 """
 Modèle de base de données pour les transactions d'investissement.
 """
-from datetime import date
-from decimal import Decimal
 from enum import Enum as PyEnum
-from typing import Optional
 
 from sqlalchemy import (
     Column, Numeric, Date, String, Text, 

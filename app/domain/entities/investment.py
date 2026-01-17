@@ -30,14 +30,7 @@ class MarketCapCategory(str, Enum):
     SMALL_CAP = "small_cap"      # $300M - $2B
     MICRO_CAP = "micro_cap"      # < $300M
 
-
-class Investment(BaseModel):
-    """Entité Investment représentant un investissement dans le portfolio."""
-    
-    # Identifiants
-    id: UUID = Field(default_factory=uuid4, description="Identifiant unique de l'investissement")
-    user_id: UUID = Field(..., description="Identifiant de l'utilisateur propriétaire")
-    
+class Vehicle(BaseModel):
     # Informations de base
     symbol: str = Field(..., min_length=1, max_length=20, description="Symbole de l'investissement")
     name: str = Field(..., min_length=1, max_length=255, description="Nom de l'entreprise/actif")
@@ -49,29 +42,11 @@ class Investment(BaseModel):
     industry: Optional[str] = Field(None, max_length=100, description="Industrie spécifique")
     market_cap_category: Optional[MarketCapCategory] = Field(None, description="Catégorie de capitalisation")
     
-    # Informations d'achat
-    purchase_date: date = Field(..., description="Date d'achat")
-    purchase_price: Money = Field(..., description="Prix d'achat unitaire")
-    quantity: Decimal = Field(..., decimal_places=8, gt=0, description="Quantité détenue")
-    
     # Prix et valeur actuels
     current_price: Optional[Money] = Field(None, description="Prix actuel unitaire")
     current_value: Optional[Money] = Field(None, description="Valeur actuelle totale")
     
-    # Métriques de performance
-    gain_loss: Optional[Money] = Field(None, description="Gain/perte en valeur absolue")
-    gain_loss_percent: Optional[Percentage] = Field(None, description="Gain/perte en pourcentage")
-    
-    # Informations supplémentaires
-    dividend_yield: Optional[Percentage] = Field(None, description="Rendement de dividende")
-    expense_ratio: Optional[Percentage] = Field(None, description="Ratio de frais (pour ETF/fonds)")
-    notes: Optional[str] = Field(None, max_length=1000, description="Notes personnelles")
-    
-    # Métadonnées
-    is_active: bool = Field(True, description="Indique si l'investissement est actif")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Date de création")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Date de dernière mise à jour")
-    
+
     @field_validator('symbol')
     def validate_symbol(cls, v):
         # Validation basique du symbole
@@ -85,6 +60,25 @@ class Investment(BaseModel):
             raise ValueError('Le code pays doit être un code ISO 3166-1 alpha-3 en majuscules')
         return v
     
+   
+
+
+
+class Investment(BaseModel):
+    """Entité Investment représentant un investissement dans le portfolio."""
+    
+    # Identifiants
+    id: UUID = Field(default_factory=uuid4, description="Identifiant unique de l'investissement")
+    user_id: UUID = Field(..., description="Identifiant de l'utilisateur propriétaire")
+
+    vehicle: Vehicle = Field(..., description="Détails de l'investissement")
+
+    
+    # Informations d'achat
+    purchase_date: date = Field(..., description="Date d'achat")
+    purchase_price: Money = Field(..., description="Prix d'achat unitaire")
+    quantity: int = Field(..., gt=0, description="Quantité détenue")
+
     @field_validator('purchase_date')
     def validate_purchase_date(cls, v):
         if v > date.today():
@@ -214,3 +208,6 @@ class Investment(BaseModel):
         use_enum_values = True
         validate_assignment = True
         arbitrary_types_allowed = True
+    
+    
+    

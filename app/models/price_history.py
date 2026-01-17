@@ -1,10 +1,7 @@
 """
 Modèle de base de données pour l'historique des prix.
 """
-from datetime import datetime
-from decimal import Decimal
 from enum import Enum as PyEnum
-from typing import Optional
 
 from sqlalchemy import (
     Column, Numeric, BigInteger, DateTime, String, 
