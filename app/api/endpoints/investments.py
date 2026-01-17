@@ -2,8 +2,10 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from agents import Session
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.clients.yahoo_finance import YahooFinanceClient
 from app.database import get_db
 from app.models.api_schema import InvestmentCreateRequest, InvestmentUpdateRequest
 from app.services.portfolio_calculator import PortfolioCalculator
@@ -57,25 +59,45 @@ def create_investment(
     payload: InvestmentCreateRequest,
     db: Session = Depends(get_db),
 ) -> InvestmentResponse:
+    print("Received payload:", payload)
     investment_repo = InvestmentRepository(db)
     calculator = PortfolioCalculator(db)
 
+    profile = YahooFinanceClient.get_investment_profile(payload.ticker_symbol)
+    purchase_price = YahooFinanceClient.get_purchase_price(
+        payload.ticker_symbol,
+        payload.purchase_date,
+    )
+
+    if purchase_price is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to fetch purchase price for the provided date.",
+        )
+
+    current_price = profile["current_price"] or YahooFinanceClient.get_latest_close(
+        payload.ticker_symbol
+    )
+    if current_price is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to fetch current price from Yahoo Finance.",
+        )
+    print("Creating investment with profile:", profile)
     created = investment_repo.create(
         user_id=payload.user_id,
-        symbol=payload.investment.symbol,
-        name=payload.investment.name,
-        asset_type=payload.investment.asset_type,
-        country=payload.investment.country,
-        purchase_date=payload.investment.purchase_date,
-        purchase_price=_to_decimal(payload.investment.purchase_price),
-        quantity=_to_decimal(payload.investment.quantity),
-        currency=payload.investment.currency,
-        sector=payload.investment.sector,
-        industry=payload.investment.industry,
-        market_cap_category=payload.investment.market_cap_category,
-        dividend_yield=_to_decimal(payload.investment.dividend_yield),
-        expense_ratio=_to_decimal(payload.investment.expense_ratio),
-        notes=payload.investment.notes,
+        symbol=profile["symbol"],
+        name=profile["name"],
+        asset_type=profile["asset_type"],
+        country=profile["country"],
+        purchase_date=payload.purchase_date,
+        purchase_price=_to_decimal(purchase_price),
+        quantity=Decimal(payload.quantity),
+        currency=profile["currency"],
+        current_price=_to_decimal(current_price),
+        sector=profile["sector"],
+        industry=profile["industry"],
+        market_cap_category=profile["market_cap_category"],
     )
 
     return _build_investment_response(created, calculator)
@@ -92,12 +114,50 @@ def update_investment(
 
     investment = investment_repo.get_by_id(investment_id)
     if investment is None:
-        raise HTTPException(detail="Investment not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Investment not found.",
+        )
 
-    if payload.current_price is not None:
-        investment.current_price = payload.current_price
-    if payload.quantity is not None:
-        investment.quantity = payload.quantity
+    profile = YahooFinanceClient.get_investment_profile(payload.ticker_symbol)
+    current_price = profile["current_price"] or YahooFinanceClient.get_latest_close(
+        payload.ticker_symbol
+    )
+    if current_price is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to fetch current price from Yahoo Finance.",
+        )
+
+    investment.symbol = profile["symbol"]
+    investment.name = profile["name"]
+    investment.asset_type = profile["asset_type"]
+    investment.country = profile["country"]
+    investment.sector = profile["sector"]
+    investment.industry = profile["industry"]
+    investment.market_cap_category = profile["market_cap_category"]
+    investment.currency = profile["currency"]
+    investment.current_price = _to_decimal(current_price)
 
     investment_repo.update(investment)
     return _build_investment_response(investment, calculator)
+
+
+@router.get("/users/{user_id}/investments", response_model=list[InvestmentResponse])
+def list_user_investments(
+    user_id: UUID,
+    skip: int = 0,
+    limit: int = 100,
+    active_only: bool = True,
+    db: Session = Depends(get_db),
+) -> list[InvestmentResponse]:
+    investment_repo = InvestmentRepository(db)
+    calculator = PortfolioCalculator(db)
+
+    investments = investment_repo.get_by_user(
+        user_id=user_id,
+        active_only=active_only,
+        skip=skip,
+        limit=limit,
+    )
+    return [_build_investment_response(inv, calculator) for inv in investments]

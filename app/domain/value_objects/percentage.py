@@ -3,7 +3,7 @@ Value Object pour représenter un pourcentage.
 """
 from decimal import Decimal
 from typing import Union
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class Percentage(BaseModel):
@@ -11,7 +11,7 @@ class Percentage(BaseModel):
     
     value: float = Field(..., description="Valeur du pourcentage")
     
-    @validator('value')
+    @field_validator('value')
     def validate_value(cls, v):
         if v < -100:
             raise ValueError('Un pourcentage ne peut pas être inférieur à -100%')

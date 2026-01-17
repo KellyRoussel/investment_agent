@@ -4,7 +4,7 @@ Entité Investment du domaine.
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator

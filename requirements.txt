@@ -8,6 +8,7 @@ sqlalchemy>=2.0.36
 alembic>=1.14.0
 psycopg>=3.2.0
 streamlit>=1.25.0
+yfinance
 openai
 jinja2
 openai-agents

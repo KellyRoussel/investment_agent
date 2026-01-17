@@ -44,6 +44,12 @@ from .price import (
     PriceAlert,
     PriceAlertCreate
 )
+from .user import (
+    UserCreate,
+    UserUpdate,
+    UserResponse,
+    UserListResponse
+)
 from .recommendation import (
     InvestmentPreferences,
     RecommendationRequest,
@@ -101,6 +107,12 @@ __all__ = [
     'MarketDataResponse',
     'PriceAlert',
     'PriceAlertCreate',
+
+    # User schemas
+    'UserCreate',
+    'UserUpdate',
+    'UserResponse',
+    'UserListResponse',
     
     # Recommendation schemas
     'InvestmentPreferences',

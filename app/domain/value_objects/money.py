@@ -2,8 +2,8 @@
 Value Object pour représenter l'argent avec devise.
 """
 from decimal import Decimal
-from typing import Optional, Union
-from pydantic import BaseModel, Field, validator
+from typing import Union
+from pydantic import BaseModel, Field, field_validator
 
 
 class Money(BaseModel):
@@ -12,13 +12,13 @@ class Money(BaseModel):
     amount: Decimal = Field(..., decimal_places=4, description="Montant de l'argent")
     currency: str = Field(..., min_length=3, max_length=3, description="Code devise ISO 4217")
     
-    @validator('amount')
+    @field_validator('amount')
     def validate_amount(cls, v):
         if v < 0:
             raise ValueError('Le montant ne peut pas être négatif')
         return v
     
-    @validator('currency')
+    @field_validator('currency')
     def validate_currency(cls, v):
         if not v.isalpha() or not v.isupper():
             raise ValueError('La devise doit être un code ISO 4217 en majuscules (ex: USD, EUR)')

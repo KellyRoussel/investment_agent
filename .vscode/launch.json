@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI (fastapi dev)",
+      "type": "python",
+      "request": "launch",
+      "module": "fastapi",
+      "args": [
+        "run",
+        "app/main.py"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    }
+  ]
+}

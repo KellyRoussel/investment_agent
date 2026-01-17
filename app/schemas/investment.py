@@ -2,14 +2,12 @@
 Schémas pour les investissements.
 """
 from datetime import date
-from decimal import Decimal
 from typing import Optional, List
 from uuid import UUID
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from app.domain.entities import AssetType, MarketCapCategory
-from app.domain.value_objects import Money, Percentage
 from .base import BaseSchema, TimestampSchema, IDSchema
 
 
@@ -60,25 +58,25 @@ class InvestmentCreate(BaseSchema):
     expense_ratio: Optional[float] = Field(None, ge=0, le=10, description="Ratio de frais")
     notes: Optional[str] = Field(None, max_length=1000, description="Notes personnelles")
     
-    @validator('symbol')
+    @field_validator('symbol')
     def validate_symbol(cls, v):
         if not v.replace('-', '').replace('.', '').isalnum():
             raise ValueError('Le symbole ne peut contenir que des lettres, chiffres, tirets et points')
         return v.upper()
     
-    @validator('country')
+    @field_validator('country')
     def validate_country(cls, v):
         if not v.isalpha() or not v.isupper():
             raise ValueError('Le code pays doit être un code ISO 3166-1 alpha-3 en majuscules')
         return v
     
-    @validator('currency')
+    @field_validator('currency')
     def validate_currency(cls, v):
         if not v.isalpha() or not v.isupper():
             raise ValueError('La devise doit être un code ISO 4217 en majuscules')
         return v
     
-    @validator('purchase_date')
+    @field_validator('purchase_date')
     def validate_purchase_date(cls, v):
         if v > date.today():
             raise ValueError('La date d\'achat ne peut pas être dans le futur')
@@ -104,7 +102,7 @@ class InvestmentUpdate(BaseSchema):
     notes: Optional[str] = Field(None, max_length=1000, description="Notes personnelles")
     is_active: Optional[bool] = Field(None, description="Indique si l'investissement est actif")
     
-    @validator('symbol')
+    @field_validator('symbol')
     def validate_symbol(cls, v):
         if v is not None:
             if not v.replace('-', '').replace('.', '').isalnum():
@@ -112,7 +110,7 @@ class InvestmentUpdate(BaseSchema):
             return v.upper()
         return v
     
-    @validator('country')
+    @field_validator('country')
     def validate_country(cls, v):
         if v is not None:
             if not v.isalpha() or not v.isupper():
@@ -120,7 +118,7 @@ class InvestmentUpdate(BaseSchema):
             return v
         return v
     
-    @validator('currency')
+    @field_validator('currency')
     def validate_currency(cls, v):
         if v is not None:
             if not v.isalpha() or not v.isupper():
@@ -128,7 +126,7 @@ class InvestmentUpdate(BaseSchema):
             return v
         return v
     
-    @validator('purchase_date')
+    @field_validator('purchase_date')
     def validate_purchase_date(cls, v):
         if v is not None and v > date.today():
             raise ValueError('La date d\'achat ne peut pas être dans le futur')

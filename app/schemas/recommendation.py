@@ -2,11 +2,10 @@
 Schémas pour les recommandations d'investissement.
 """
 from datetime import datetime
-from decimal import Decimal
 from typing import List, Optional, Dict
 from uuid import UUID
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from app.domain.entities import AssetType
 from .base import BaseSchema, TimestampSchema, IDSchema
@@ -35,21 +34,21 @@ class RecommendationRequest(BaseSchema):
     preferences: Optional[InvestmentPreferences] = Field(None, description="Préférences d'investissement")
     objectives: Optional[List[str]] = Field(None, description="Objectifs d'investissement")
     
-    @validator('investment_horizon')
+    @field_validator('investment_horizon')
     def validate_investment_horizon(cls, v):
         valid_horizons = ["short_term", "medium_term", "long_term"]
         if v not in valid_horizons:
             raise ValueError(f"L'horizon d'investissement doit être l'un de: {', '.join(valid_horizons)}")
         return v
     
-    @validator('risk_tolerance')
+    @field_validator('risk_tolerance')
     def validate_risk_tolerance(cls, v):
         valid_tolerances = ["conservative", "moderate", "aggressive"]
         if v not in valid_tolerances:
             raise ValueError(f"La tolérance au risque doit être l'une de: {', '.join(valid_tolerances)}")
         return v
     
-    @validator('currency')
+    @field_validator('currency')
     def validate_currency(cls, v):
         if not v.isalpha() or not v.isupper() or len(v) != 3:
             raise ValueError('La devise doit être un code ISO 4217 en majuscules (ex: USD, EUR)')
@@ -141,7 +140,7 @@ class RecommendationApplyRequest(BaseSchema):
     applied_investments: List[Dict[str, any]] = Field(..., description="Investissements appliqués")
     notes: Optional[str] = Field(None, description="Notes sur l'application")
     
-    @validator('applied_investments')
+    @field_validator('applied_investments')
     def validate_applied_investments(cls, v):
         for item in v:
             if not isinstance(item, dict):

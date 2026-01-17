@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import Field
 
-from .base import BaseSchema, TimestampSchema, IDSchema
+from .base import BaseSchema, IDSchema
 
 
 class PortfolioBreakdown(BaseSchema):

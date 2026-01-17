@@ -7,8 +7,7 @@ from uuid import UUID
 
 from pydantic import Field
 
-from .base import BaseSchema, TimestampSchema, IDSchema
-
+from .base import BaseSchema
 
 class PriceHistoryItem(BaseSchema):
     """Schéma pour un élément de l'historique des prix."""

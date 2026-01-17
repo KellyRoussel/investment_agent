@@ -241,6 +241,7 @@ class PortfolioCalculator:
     
     def calculate_investment_metrics(self, investment: InvestmentModel) -> Dict:
         """Calcule les métriques d'un investissement spécifique."""
+        print("Calculating metrics for investment:", investment.id)
         if investment.current_price is None:
             return {
                 "current_value": None,

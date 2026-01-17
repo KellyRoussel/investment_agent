@@ -1,22 +1,15 @@
-from decimal import Decimal
-from typing import Optional
+from datetime import date
 from uuid import UUID
-from pydantic import BaseModel, Field, model_validator
-
-from app.schemas.investment import InvestmentCreate
+from pydantic import BaseModel, Field
 
 
 class InvestmentCreateRequest(BaseModel):
     user_id: UUID
-    investment: InvestmentCreate
+    ticker_symbol: str = Field(..., min_length=1, max_length=20)
+    quantity: float = Field(..., gt=0)
+    purchase_date: date
+    
 
 
 class InvestmentUpdateRequest(BaseModel):
-    current_price: Optional[Decimal] = Field(None, gt=0)
-    quantity: Optional[Decimal] = Field(None, gt=0)
-
-    @model_validator(mode="after")
-    def validate_payload(self):
-        if self.current_price is None and self.quantity is None:
-            raise ValueError("Provide current_price or quantity to update.")
-        return self
+    ticker_symbol: str = Field(..., min_length=1, max_length=20)
