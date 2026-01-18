@@ -12,7 +12,7 @@ from app.models.api_schema import InvestmentCreateRequest, InvestmentUpdateReque
 from app.services.portfolio_calculator import PortfolioCalculator
 from app.models.investment import DBInvestment
 from app.repositories import InvestmentRepository
-from app.repositories.price_history_repository import PriceHistoryRepository
+from app.models.price_history import DataQuality
 from app.schemas import InvestmentResponse
 from app.schemas.price_history import PriceHistoryResponse, PriceHistoryPoint
 from app.utils.auth import get_current_user
@@ -204,7 +204,6 @@ def get_price_history(
         HTTPException 403: If user doesn't own the investment
     """
     investment_repo = InvestmentRepository(db)
-    price_history_repo = PriceHistoryRepository(db)
 
     # Verify investment exists
     investment = investment_repo.get_by_id(investment_id)
@@ -227,38 +226,20 @@ def get_price_history(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Fetch price history
-    price_histories = price_history_repo.get_by_investment(
-        investment_id=investment_id,
-        start_date=start_date,
-        end_date=end_date,
+    # Fetch price history from Yahoo Finance
+    price_histories = YahooFinanceClient.get_price_history(
+        investment.symbol,
+        start_date,
+        end_date,
     )
 
-    # Convert to response schema
-    data_points = [
-        PriceHistoryPoint(
-            timestamp=ph.timestamp,
-            price=float(ph.price),
-            open_price=float(ph.open_price) if ph.open_price is not None else None,
-            high_price=float(ph.high_price) if ph.high_price is not None else None,
-            low_price=float(ph.low_price) if ph.low_price is not None else None,
-            close_price=float(ph.close_price) if ph.close_price is not None else None,
-            adjusted_close=float(ph.adjusted_close) if ph.adjusted_close is not None else None,
-            volume=ph.volume,
-            market_cap=ph.market_cap,
-            dividend_amount=float(ph.dividend_amount) if ph.dividend_amount is not None else None,
-            split_ratio=float(ph.split_ratio) if ph.split_ratio is not None else None,
-            source=ph.source,
-            data_quality=ph.data_quality,
-        )
-        for ph in price_histories
-    ]
+    
 
     return PriceHistoryResponse(
         investment_id=str(investment_id),
         symbol=investment.symbol,
-        data_points=data_points,
-        total_points=len(data_points),
+        data_points=price_histories,
+        total_points=len(price_histories),
         start_date=price_histories[0].timestamp if price_histories else None,
         end_date=price_histories[-1].timestamp if price_histories else None,
     )

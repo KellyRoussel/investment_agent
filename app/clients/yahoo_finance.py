@@ -4,6 +4,8 @@ from typing import Optional
 import yfinance as yf
 
 from app.models.investment import AssetType, MarketCapCategory
+from app.models.price_history import DataQuality
+from app.schemas.price_history import PriceHistoryPoint
 
 
 class YahooFinanceClient:
@@ -129,3 +131,70 @@ class YahooFinanceClient:
             "currency": (info.get("currency") or "USD").upper(),
             "current_price": YahooFinanceClient._get_current_price(ticker, info),
         }
+
+    @staticmethod
+    def get_price_history(ticker_symbol: str, start_date: date, end_date: date) -> list[PriceHistoryPoint]:
+        print("Fetching price history for", ticker_symbol, "from", start_date, "to", end_date)
+        ticker = yf.Ticker(ticker_symbol)
+        start = datetime.combine(start_date, datetime.min.time())
+        end = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+        data = ticker.history(start=start, end=end)
+        if data.empty:
+            return []
+        if getattr(data.index, "tz", None) is not None:
+            data = data.tz_convert("UTC")
+            data.index = data.index.tz_localize(None)
+
+        def _clean_float(value: object) -> Optional[float]:
+            if value is None:
+                return None
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                return None
+            if numeric != numeric:
+                return None
+            return numeric
+
+        def _clean_int(value: object) -> Optional[int]:
+            numeric = _clean_float(value)
+            if numeric is None:
+                return None
+            return int(numeric)
+
+        history: list[PriceHistoryPoint] = []
+        for timestamp, row in data.iterrows():
+            close_price = _clean_float(row.get("Close"))
+            open_price = _clean_float(row.get("Open"))
+            high_price = _clean_float(row.get("High"))
+            low_price = _clean_float(row.get("Low"))
+            adjusted_close = _clean_float(row.get("Adj Close"))
+            volume = _clean_int(row.get("Volume"))
+            dividend_amount = _clean_float(row.get("Dividends"))
+            split_ratio = _clean_float(row.get("Stock Splits"))
+            if dividend_amount == 0:
+                dividend_amount = None
+            if split_ratio == 0:
+                split_ratio = None
+            if close_price is None:
+                continue
+            history.append(
+                PriceHistoryPoint(
+                    timestamp=timestamp,
+                    price=close_price,
+                    open_price=open_price,
+                    high_price=high_price,
+                    low_price=low_price,
+                    close_price=close_price,
+                    adjusted_close=adjusted_close,
+                    volume=volume,
+                    market_cap=None,
+                    dividend_amount=dividend_amount,
+                    split_ratio=split_ratio,
+                    source="yahoo_finance",
+                    data_quality=DataQuality.GOOD,
+                )
+            )
+
+
+        return history
