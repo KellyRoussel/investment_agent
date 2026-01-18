@@ -1,8 +1,9 @@
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.clients.yahoo_finance import YahooFinanceClient
@@ -11,7 +12,11 @@ from app.models.api_schema import InvestmentCreateRequest, InvestmentUpdateReque
 from app.services.portfolio_calculator import PortfolioCalculator
 from app.models.investment import DBInvestment
 from app.repositories import InvestmentRepository
+from app.repositories.price_history_repository import PriceHistoryRepository
 from app.schemas import InvestmentResponse
+from app.schemas.price_history import PriceHistoryResponse, PriceHistoryPoint
+from app.utils.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -57,6 +62,7 @@ def _build_investment_response(
 @router.post("/investments", response_model=InvestmentResponse)
 def create_investment(
     payload: InvestmentCreateRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InvestmentResponse:
     print("Received payload:", payload)
@@ -85,7 +91,7 @@ def create_investment(
         )
     print("Creating investment with profile:", profile)
     created = investment_repo.create(
-        user_id=payload.user_id,
+        user_id=current_user.id,
         symbol=profile["symbol"],
         name=profile["name"],
         asset_type=profile["asset_type"],
@@ -107,6 +113,7 @@ def create_investment(
 def update_investment(
     investment_id: UUID,
     payload: InvestmentUpdateRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InvestmentResponse:
     investment_repo = InvestmentRepository(db)
@@ -117,6 +124,13 @@ def update_investment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Investment not found.",
+        )
+
+    # Verify ownership
+    if investment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this investment",
         )
 
     profile = YahooFinanceClient.get_investment_profile(payload.ticker_symbol)
@@ -145,19 +159,106 @@ def update_investment(
 
 @router.get("/users/{user_id}/investments", response_model=list[InvestmentResponse])
 def list_user_investments(
-    user_id: UUID,
     skip: int = 0,
     limit: int = 100,
     active_only: bool = True,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[InvestmentResponse]:
+
     investment_repo = InvestmentRepository(db)
     calculator = PortfolioCalculator(db)
 
     investments = investment_repo.get_by_user(
-        user_id=user_id,
+        user_id=current_user.id,
         active_only=active_only,
         skip=skip,
         limit=limit,
     )
     return [_build_investment_response(inv, calculator) for inv in investments]
+
+
+@router.get("/investments/{investment_id}/price-history", response_model=PriceHistoryResponse)
+def get_price_history(
+    investment_id: UUID,
+    start_date: Optional[date] = Query(None, description="Start date for price history (default: 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date for price history (default: today)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PriceHistoryResponse:
+    """
+    Get price history for an investment within a date range.
+
+    Args:
+        investment_id: ID of the investment
+        start_date: Start date (default: 30 days ago)
+        end_date: End date (default: today)
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        PriceHistoryResponse with historical price data
+
+    Raises:
+        HTTPException 404: If investment not found
+        HTTPException 403: If user doesn't own the investment
+    """
+    investment_repo = InvestmentRepository(db)
+    price_history_repo = PriceHistoryRepository(db)
+
+    # Verify investment exists
+    investment = investment_repo.get_by_id(investment_id)
+    if investment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Investment not found",
+        )
+
+    # Verify ownership
+    if investment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this investment's price history",
+        )
+
+    # Set default dates if not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Fetch price history
+    price_histories = price_history_repo.get_by_investment(
+        investment_id=investment_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    # Convert to response schema
+    data_points = [
+        PriceHistoryPoint(
+            timestamp=ph.timestamp,
+            price=float(ph.price),
+            open_price=float(ph.open_price) if ph.open_price is not None else None,
+            high_price=float(ph.high_price) if ph.high_price is not None else None,
+            low_price=float(ph.low_price) if ph.low_price is not None else None,
+            close_price=float(ph.close_price) if ph.close_price is not None else None,
+            adjusted_close=float(ph.adjusted_close) if ph.adjusted_close is not None else None,
+            volume=ph.volume,
+            market_cap=ph.market_cap,
+            dividend_amount=float(ph.dividend_amount) if ph.dividend_amount is not None else None,
+            split_ratio=float(ph.split_ratio) if ph.split_ratio is not None else None,
+            source=ph.source,
+            data_quality=ph.data_quality,
+        )
+        for ph in price_histories
+    ]
+
+    return PriceHistoryResponse(
+        investment_id=str(investment_id),
+        symbol=investment.symbol,
+        data_points=data_points,
+        total_points=len(data_points),
+        start_date=price_histories[0].timestamp if price_histories else None,
+        end_date=price_histories[-1].timestamp if price_histories else None,
+    )

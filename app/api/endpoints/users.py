@@ -7,39 +7,25 @@ from app.database import get_db
 from app.models.user import User
 from app.repositories import UserRepository
 from app.schemas.user import UserCreate, UserListResponse, UserResponse, UserUpdate
+from app.utils.auth import get_current_user
 
 router = APIRouter()
-
-
-@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(
-    payload: UserCreate,
-    db: Session = Depends(get_db),
-) -> UserResponse:
-    user_repo = UserRepository(db)
-    existing = user_repo.get_by_email(payload.email)
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered.",
-        )
-
-    user = user_repo.create(
-        email=payload.email,
-        password_hash=payload.password_hash,
-        full_name=payload.full_name,
-        currency_preference=payload.currency_preference,
-        risk_tolerance=payload.risk_tolerance,
-    )
-    return UserResponse.model_validate(user)
 
 
 @router.patch("/users/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: UUID,
     payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserResponse:
+    # Verify user can only update their own profile
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this user",
+        )
+
     user_repo = UserRepository(db)
     user = user_repo.get_by_id(user_id)
     if user is None:
@@ -76,6 +62,7 @@ def update_user(
 def list_users(
     skip: int = 0,
     limit: int = 100,
+    #current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserListResponse:
     user_repo = UserRepository(db)
