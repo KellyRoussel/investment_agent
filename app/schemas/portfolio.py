@@ -101,6 +101,23 @@ class PortfolioSnapshotList(BaseSchema):
     offset: int = Field(..., description="Offset appliqué")
 
 
+class PortfolioHistoryPoint(BaseSchema):
+    """Schema for a portfolio value history point."""
+
+    timestamp: datetime = Field(..., description="Value timestamp")
+    total_value: float = Field(..., description="Total portfolio value")
+
+
+class PortfolioHistoryResponse(BaseSchema):
+    """Schema for portfolio value history."""
+
+    user_id: UUID = Field(..., description="User ID")
+    data_points: List[PortfolioHistoryPoint] = Field(..., description="Portfolio value history")
+    total_points: int = Field(..., description="Total points")
+    start_date: Optional[datetime] = Field(None, description="Start date")
+    end_date: Optional[datetime] = Field(None, description="End date")
+
+
 class PortfolioComparison(BaseSchema):
     """Schéma pour la comparaison de portfolios."""
     
