@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark theme colors */
+  --color-dark-bg: #0a0e27;
+  --color-dark-surface: #151932;
+  --color-dark-border: #1f2544;
+  --color-dark-hover: #252b4a;
+
+  /* Accent colors */
+  --color-accent-cyan: #22d3ee;
+  --color-accent-cyan-dark: #06b6d4;
+  --color-accent-purple: #a78bfa;
+  --color-accent-purple-dark: #8b5cf6;
+  --color-accent-pink: #f472b6;
+  --color-accent-pink-dark: #ec4899;
+
+  /* Status colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+}
+
+* {
+  border-color: var(--color-dark-border);
+}
+
+body {
+  background-color: var(--color-dark-bg);
+  color: rgb(243 244 246);
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--color-dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-dark-border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-dark-hover);
+}
+
+/* Button styles */
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.btn:focus {
+  ring: 2px;
+  ring-offset: 2px;
+  ring-offset-color: var(--color-dark-bg);
+}
+
+.btn-primary {
+  background-color: var(--color-accent-cyan);
+  color: var(--color-dark-bg);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent-cyan-dark);
+}
+
+.btn-primary:focus {
+  ring-color: var(--color-accent-cyan);
+}
+
+.btn-secondary {
+  background-color: var(--color-dark-surface);
+  color: rgb(243 244 246);
+  border: 1px solid var(--color-dark-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-dark-hover);
+}
+
+.btn-secondary:focus {
+  ring-color: var(--color-accent-cyan);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: rgb(220 38 38);
+}
+
+.btn-danger:focus {
+  ring-color: var(--color-danger);
+}
+
+/* Input styles */
+.input {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background-color: var(--color-dark-surface);
+  color: rgb(243 244 246);
+  border: 1px solid var(--color-dark-border);
+  border-radius: 0.5rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.input::placeholder {
+  color: rgb(107 114 128);
+}
+
+.input:focus {
+  ring: 2px;
+  ring-color: var(--color-accent-cyan);
+  border-color: transparent;
+}
+
+.input-error {
+  border-color: var(--color-danger);
+}
+
+.input-error:focus {
+  ring-color: var(--color-danger);
+}
+
+/* Card styles */
+.card {
+  background-color: var(--color-dark-surface);
+  border: 1px solid var(--color-dark-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.card-hover {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card-hover:hover {
+  border-color: var(--color-accent-cyan);
+}
+
+/* Label styles */
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(209 213 219);
+  margin-bottom: 0.5rem;
+}
+
+.error-text {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
