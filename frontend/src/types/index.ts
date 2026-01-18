@@ -72,7 +72,9 @@ export interface Investment {
 }
 
 export interface InvestmentCreate {
-  ticker_symbol: string;
+  account_type: 'CTO' | 'PEA';
+  ticker_symbol?: string;
+  isin?: string;
   purchase_date: string;
   quantity: number;
 }

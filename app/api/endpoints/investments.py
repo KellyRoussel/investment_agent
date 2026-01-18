@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
+from app.clients.open_figi import OpenFigiClient
 from app.clients.yahoo_finance import YahooFinanceClient
 from app.database import get_db
 from app.models.api_schema import InvestmentCreateRequest, InvestmentUpdateRequest
@@ -65,13 +66,29 @@ def create_investment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InvestmentResponse:
-    print("Received payload:", payload)
     investment_repo = InvestmentRepository(db)
     calculator = PortfolioCalculator(db)
 
-    profile = YahooFinanceClient.get_investment_profile(payload.ticker_symbol)
+    if payload.account_type == "PEA":
+        ticker_symbol = payload.ticker_symbol
+    else:
+        try:
+            ticker_symbol = OpenFigiClient.isin_to_ticker(payload.isin)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
+    if not ticker_symbol:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to resolve ticker_symbol from the provided input.",
+        )
+
+    profile = YahooFinanceClient.get_investment_profile(ticker_symbol)
     purchase_price = YahooFinanceClient.get_purchase_price(
-        payload.ticker_symbol,
+        ticker_symbol,
         payload.purchase_date,
     )
 
@@ -82,14 +99,13 @@ def create_investment(
         )
 
     current_price = profile["current_price"] or YahooFinanceClient.get_latest_close(
-        payload.ticker_symbol
+        ticker_symbol
     )
     if current_price is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unable to fetch current price from Yahoo Finance.",
         )
-    print("Creating investment with profile:", profile)
     created = investment_repo.create(
         user_id=current_user.id,
         symbol=profile["symbol"],
@@ -243,3 +259,29 @@ def get_price_history(
         start_date=price_histories[0].timestamp if price_histories else None,
         end_date=price_histories[-1].timestamp if price_histories else None,
     )
+
+
+@router.delete("/investments/{investment_id}")
+def delete_investment(
+    investment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    investment_repo = InvestmentRepository(db)
+
+    investment = investment_repo.get_by_id(investment_id)
+    if investment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Investment not found.",
+        )
+
+    # Verify ownership
+    if investment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this investment",
+        )
+
+    investment_repo.delete(investment_id)
+    return {"detail": "Investment deleted successfully."}
