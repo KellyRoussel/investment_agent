@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Card } from '@components/common/Card';
 
 interface ChartDataPoint {
@@ -57,37 +57,23 @@ export function BreakdownChart({ title, data, colors = DEFAULT_COLORS }: Breakdo
     return null;
   };
 
-  const CustomLegend = ({ payload }: any) => {
-    return (
-      <div className="flex flex-wrap gap-3 justify-center mt-4">
-        {payload.map((entry: any, index: number) => (
-          <div key={`legend-${index}`} className="flex items-center gap-2">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-sm text-gray-400">{entry.value}</span>
-            <span className="text-xs text-gray-500">
-              ({entry.payload.percentage.toFixed(1)}%)
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  const legendItems = data.map((entry, index) => ({
+    ...entry,
+    color: colors[index % colors.length],
+  }));
 
   return (
     <Card>
       <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={280}>
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
-            outerRadius={80}
+            label={false}
+            outerRadius={78}
             fill="#8884d8"
             dataKey="value"
           >
@@ -96,9 +82,17 @@ export function BreakdownChart({ title, data, colors = DEFAULT_COLORS }: Breakdo
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend content={<CustomLegend />} />
         </PieChart>
       </ResponsiveContainer>
+      <div className="flex flex-wrap gap-3 justify-center mt-4">
+        {legendItems.map((entry, index) => (
+          <div key={`legend-${index}`} className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span className="text-sm text-gray-400">{entry.name}</span>
+            <span className="text-xs text-gray-500">({entry.percentage.toFixed(1)}%)</span>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
