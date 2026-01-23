@@ -136,7 +136,8 @@ class YahooFinanceClient:
     def get_price_history(ticker_symbol: str, start_date: date, end_date: date) -> list[PriceHistoryPoint]:
         print("Fetching price history for", ticker_symbol, "from", start_date, "to", end_date)
         ticker = yf.Ticker(ticker_symbol)
-        start = datetime.combine(start_date, datetime.min.time())
+        fetch_start_date = start_date - timedelta(days=7)
+        start = datetime.combine(fetch_start_date, datetime.min.time())
         end = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
         data = ticker.history(start=start, end=end)
         if data.empty:
@@ -162,7 +163,8 @@ class YahooFinanceClient:
                 return None
             return int(numeric)
 
-        history: list[PriceHistoryPoint] = []
+        points_by_date: dict[date, PriceHistoryPoint] = {}
+        last_point: Optional[PriceHistoryPoint] = None
         for timestamp, row in data.iterrows():
             close_price = _clean_float(row.get("Close"))
             open_price = _clean_float(row.get("Open"))
@@ -178,23 +180,55 @@ class YahooFinanceClient:
                 split_ratio = None
             if close_price is None:
                 continue
-            history.append(
-                PriceHistoryPoint(
-                    timestamp=timestamp,
-                    price=close_price,
-                    open_price=open_price,
-                    high_price=high_price,
-                    low_price=low_price,
-                    close_price=close_price,
-                    adjusted_close=adjusted_close,
-                    volume=volume,
-                    market_cap=None,
-                    dividend_amount=dividend_amount,
-                    split_ratio=split_ratio,
-                    source="yahoo_finance",
-                    data_quality=DataQuality.GOOD,
-                )
+            point = PriceHistoryPoint(
+                timestamp=timestamp,
+                price=close_price,
+                open_price=open_price,
+                high_price=high_price,
+                low_price=low_price,
+                close_price=close_price,
+                adjusted_close=adjusted_close,
+                volume=volume,
+                market_cap=None,
+                dividend_amount=dividend_amount,
+                split_ratio=split_ratio,
+                source="yahoo_finance",
+                data_quality=DataQuality.GOOD,
             )
+            point_date = timestamp.date()
+            if point_date < start_date:
+                last_point = point
+                continue
+            if point_date > end_date:
+                continue
+            points_by_date[point_date] = point
 
+        history: list[PriceHistoryPoint] = []
+        current_date = start_date
+        while current_date <= end_date:
+            point = points_by_date.get(current_date)
+            if point is not None:
+                history.append(point)
+                last_point = point
+            elif last_point is not None:
+                last_price = last_point.close_price or last_point.price
+                history.append(
+                    PriceHistoryPoint(
+                        timestamp=datetime.combine(current_date, datetime.min.time()),
+                        price=last_price,
+                        open_price=last_price,
+                        high_price=last_price,
+                        low_price=last_price,
+                        close_price=last_price,
+                        adjusted_close=last_point.adjusted_close or last_price,
+                        volume=None,
+                        market_cap=None,
+                        dividend_amount=None,
+                        split_ratio=None,
+                        source="yahoo_finance",
+                        data_quality=DataQuality.ESTIMATED,
+                    )
+                )
+            current_date += timedelta(days=1)
 
         return history

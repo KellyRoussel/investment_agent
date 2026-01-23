@@ -1,7 +1,7 @@
 """
 Schémas pour le portfolio.
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -104,7 +104,7 @@ class PortfolioSnapshotList(BaseSchema):
 class PortfolioHistoryPoint(BaseSchema):
     """Schema for a portfolio value history point."""
 
-    timestamp: datetime = Field(..., description="Value timestamp")
+    timestamp: date = Field(..., description="Value date")
     total_value: float = Field(..., description="Total portfolio value")
 
 
@@ -114,8 +114,8 @@ class PortfolioHistoryResponse(BaseSchema):
     user_id: UUID = Field(..., description="User ID")
     data_points: List[PortfolioHistoryPoint] = Field(..., description="Portfolio value history")
     total_points: int = Field(..., description="Total points")
-    start_date: Optional[datetime] = Field(None, description="Start date")
-    end_date: Optional[datetime] = Field(None, description="End date")
+    start_date: Optional[date] = Field(None, description="Start date")
+    end_date: Optional[date] = Field(None, description="End date")
 
 
 class PortfolioComparison(BaseSchema):

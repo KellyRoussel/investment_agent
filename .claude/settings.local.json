@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(uvicorn app.main:app:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(python -m py_compile:*)"
     ]
   }
 }

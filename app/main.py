@@ -27,7 +27,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-app.include_router(investments_router)
-app.include_router(portfolio_router)
-app.include_router(users_router)
+app.include_router(investments_router, tags=["Investments"])
+app.include_router(portfolio_router, tags=["Portfolio"])
+app.include_router(users_router, tags=["Users"])
 

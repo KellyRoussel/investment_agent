@@ -12,6 +12,7 @@ from app.database import get_db
 from app.repositories import InvestmentRepository
 from app.schemas.portfolio import PortfolioHistoryPoint, PortfolioHistoryResponse
 from app.services.portfolio_calculator import PortfolioCalculator
+from app.services.currency_converter import CurrencyConverter
 from app.utils.auth import get_current_user
 from app.models.user import User
 
@@ -24,7 +25,7 @@ def get_portfolio_metrics(
 ) -> dict:
 
     calculator = PortfolioCalculator(db)
-    return calculator.calculate_portfolio_metrics(current_user.id)
+    return calculator.calculate_portfolio_metrics(current_user.id, current_user.currency_preference)
 
 
 @router.get("/portfolio/{user_id}/price-history", response_model=PortfolioHistoryResponse)
@@ -48,7 +49,20 @@ def get_portfolio_price_history(
         limit=1000,
     )
 
-    totals: dict[datetime, float] = defaultdict(float)
+    user_currency = current_user.currency_preference
+
+    # Collect all unique currencies and fetch exchange rate histories
+    currencies = set(inv.currency for inv in investments if inv.currency != user_currency)
+    exchange_rate_histories = {}
+    for currency in currencies:
+        exchange_rate_histories[currency] = CurrencyConverter.get_exchange_rate_history(
+            currency,
+            user_currency,
+            start_date,
+            end_date
+        )
+
+    totals: dict[date, float] = defaultdict(float)
     for investment in investments:
         if investment.purchase_date and investment.purchase_date > end_date:
             continue
@@ -63,15 +77,33 @@ def get_portfolio_price_history(
             end_date,
         )
         for point in history:
+            # if point date is 2025-11-27, print value
             price = point.price
             if price is None:
                 continue
-            totals[point.timestamp] += float(price) * float(investment.quantity)
 
+            # Normalize timestamp to date only
+            point_date = point.timestamp.date()
+
+            # Convert price to user's currency
+            if investment.currency == user_currency:
+                converted_price = price
+            else:
+                # Get exchange rate for this date
+                rates = exchange_rate_histories.get(investment.currency, {})
+                # lookup by date only (ignore time)
+                exchange_rate = rates.get(
+                    datetime.combine(point_date, datetime.min.time())
+                )
+                converted_price = price * exchange_rate if exchange_rate else price
+
+            totals[point_date] += float(converted_price) * float(investment.quantity)
+            
     data_points = [
-        PortfolioHistoryPoint(timestamp=timestamp, total_value=value)
-        for timestamp, value in sorted(totals.items(), key=lambda item: item[0])
+        PortfolioHistoryPoint(timestamp=date_val, total_value=value)
+        for date_val, value in sorted(totals.items(), key=lambda item: item[0])
     ]
+    
 
     return PortfolioHistoryResponse(
         user_id=current_user.id,

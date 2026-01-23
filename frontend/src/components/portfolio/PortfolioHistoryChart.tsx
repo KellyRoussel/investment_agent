@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { format, subMonths, subYears, parseISO } from 'date-fns';
 import { Card } from '@components/common/Card';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
+import { investmentsService } from '@services/investmentsService';
 import { portfolioService } from '@services/portfolioService';
 import { formatCurrency } from '@utils/formatters';
 import type { PortfolioHistoryPoint } from '@types/index';
@@ -18,6 +19,7 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('3M');
+  const [investmentEvents, setInvestmentEvents] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetchHistory();
@@ -49,12 +51,45 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
           break;
       }
 
-      const response = await portfolioService.getPortfolioHistory({
-        start_date: format(startDate, 'yyyy-MM-dd'),
-        end_date: format(now, 'yyyy-MM-dd'),
+      const [response, investments] = await Promise.all([
+        portfolioService.getPortfolioHistory({
+          start_date: format(startDate, 'yyyy-MM-dd'),
+          end_date: format(now, 'yyyy-MM-dd'),
+        }),
+        investmentsService.getUserInvestments({ active_only: true, limit: 1000 }),
+      ]);
+
+      const eventsByDate: Record<string, Set<string>> = {};
+      for (const investment of investments) {
+        if (!investment.purchase_date) {
+          continue;
+        }
+        let purchaseDate: Date;
+        try {
+          purchaseDate = parseISO(investment.purchase_date);
+        } catch {
+          continue;
+        }
+        if (purchaseDate < startDate || purchaseDate > now) {
+          continue;
+        }
+        const dateKey = format(purchaseDate, 'yyyy-MM-dd');
+        if (!eventsByDate[dateKey]) {
+          eventsByDate[dateKey] = new Set();
+        }
+        const label = investment.name
+          ? `${investment.symbol} - ${investment.name}`
+          : investment.symbol;
+        eventsByDate[dateKey].add(label);
+      }
+
+      const normalizedEvents: Record<string, string[]> = {};
+      Object.keys(eventsByDate).forEach((dateKey) => {
+        normalizedEvents[dateKey] = Array.from(eventsByDate[dateKey]).sort();
       });
 
       setData(response.data_points);
+      setInvestmentEvents(normalizedEvents);
     } catch (err: any) {
       console.error('Failed to fetch portfolio history:', err);
       setError('Failed to load portfolio history');
@@ -77,9 +112,13 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
     }
   };
 
+  const investmentGuideDates = Object.keys(investmentEvents).sort();
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0].payload;
+      const dateKey = format(parseISO(dataPoint.timestamp), 'yyyy-MM-dd');
+      const investmentsForDate = investmentEvents[dateKey] || [];
       return (
         <div className="bg-[#151932] border border-[#1f2544] rounded-lg p-3 shadow-xl">
           <p className="text-sm text-gray-400 mb-1">
@@ -88,6 +127,16 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
           <p className="text-base font-bold text-white">
             {formatCurrency(dataPoint.total_value, currency)}
           </p>
+          {investmentsForDate.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs uppercase tracking-wide text-[#22d3ee]">Investissements</p>
+              <ul className="mt-1 text-sm text-gray-200">
+                {investmentsForDate.map((label) => (
+                  <li key={label}>{label}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       );
     }
@@ -180,6 +229,15 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
             style={{ fontSize: '12px' }}
           />
           <Tooltip content={<CustomTooltip />} />
+          {investmentGuideDates.map((dateKey) => (
+            <ReferenceLine
+              key={dateKey}
+              x={dateKey}
+              stroke="#f59e0b"
+              strokeDasharray="4 4"
+              strokeOpacity={0.6}
+            />
+          ))}
           <Area
             type="monotone"
             dataKey="total_value"

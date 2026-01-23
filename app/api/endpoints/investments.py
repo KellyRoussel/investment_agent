@@ -30,8 +30,9 @@ def _to_decimal(value: Optional[float]) -> Optional[Decimal]:
 def _build_investment_response(
     investment: DBInvestment,
     calculator: PortfolioCalculator,
+    user_currency: str = None,
 ) -> InvestmentResponse:
-    metrics = calculator.calculate_investment_metrics(investment)
+    metrics = calculator.calculate_investment_metrics(investment, user_currency)
     return InvestmentResponse(
         id=investment.id,
         created_at=investment.created_at,
@@ -122,7 +123,7 @@ def create_investment(
         market_cap_category=profile["market_cap_category"],
     )
 
-    return _build_investment_response(created, calculator)
+    return _build_investment_response(created, calculator, current_user.currency_preference)
 
 
 @router.patch("/investments/{investment_id}", response_model=InvestmentResponse)
@@ -170,7 +171,7 @@ def update_investment(
     investment.current_price = _to_decimal(current_price)
 
     investment_repo.update(investment)
-    return _build_investment_response(investment, calculator)
+    return _build_investment_response(investment, calculator, current_user.currency_preference)
 
 
 @router.get("/users/{user_id}/investments", response_model=list[InvestmentResponse])
@@ -191,7 +192,7 @@ def list_user_investments(
         skip=skip,
         limit=limit,
     )
-    return [_build_investment_response(inv, calculator) for inv in investments]
+    return [_build_investment_response(inv, calculator, current_user.currency_preference) for inv in investments]
 
 
 @router.get("/investments/{investment_id}/price-history", response_model=PriceHistoryResponse)

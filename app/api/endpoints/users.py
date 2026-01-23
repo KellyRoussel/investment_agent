@@ -69,3 +69,18 @@ def list_users(
     users = user_repo.get_all(skip=skip, limit=limit)
     total = db.query(User).count()
     return UserListResponse(items=users, total=total, limit=limit, offset=skip)
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+) -> None:
+    user_repo = UserRepository(db)
+    user = user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+    user_repo.delete(user_id)
+    return None
