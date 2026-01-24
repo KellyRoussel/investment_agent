@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.clients.yahoo_finance import YahooFinanceClient
 from app.database import get_db
+from app.models.portfolio_metrics import PortfolioMetrics
 from app.repositories import InvestmentRepository
 from app.schemas.portfolio import PortfolioHistoryPoint, PortfolioHistoryResponse
 from app.services.portfolio_calculator import PortfolioCalculator
@@ -22,7 +23,7 @@ router = APIRouter()
 def get_portfolio_metrics(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> dict:
+) -> PortfolioMetrics:
 
     calculator = PortfolioCalculator(db)
     return calculator.calculate_portfolio_metrics(current_user.id, current_user.currency_preference)

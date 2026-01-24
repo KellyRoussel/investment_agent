@@ -50,14 +50,14 @@ def _build_investment_response(
         quantity=float(investment.quantity),
         currency=investment.currency,
         current_price=float(investment.current_price) if investment.current_price is not None else None,
-        current_value=metrics["current_value"],
-        gain_loss=metrics["gain_loss"],
-        gain_loss_percent=metrics["gain_loss_percent"],
+        current_value=metrics.current_value,
+        gain_loss=metrics.gain_loss,
+        gain_loss_percent=metrics.gain_loss_percent,
         dividend_yield=float(investment.dividend_yield) if investment.dividend_yield is not None else None,
         expense_ratio=float(investment.expense_ratio) if investment.expense_ratio is not None else None,
         notes=investment.notes,
         is_active=investment.is_active,
-        performance_status=metrics["performance_status"],
+        performance_status=metrics.performance_status,
     )
 
 

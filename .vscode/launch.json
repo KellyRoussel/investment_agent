@@ -2,13 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "FastAPI (fastapi dev)",
+      "name": "FastAPI (uvicorn)",
       "type": "python",
       "request": "launch",
-      "module": "fastapi",
+      "module": "uvicorn",
       "args": [
-        "run",
-        "app/main.py"
+        "app.main:app",
+        "--reload",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
       ],
       "jinja": true,
       "justMyCode": true,

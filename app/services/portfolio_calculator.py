@@ -3,14 +3,15 @@ Service pour calculer les métriques de portfolio à la volée.
 """
 from datetime import date
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import List
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.models.investment import DBInvestment as InvestmentModel
-from app.models.user import User
+from app.models.portfolio_metrics import *
 from app.services.currency_converter import CurrencyConverter
+
 
 
 class PortfolioCalculator:
@@ -19,7 +20,7 @@ class PortfolioCalculator:
     def __init__(self, db: Session):
         self.db = db
     
-    def calculate_portfolio_metrics(self, user_id: UUID, user_currency: str = "USD") -> Dict:
+    def calculate_portfolio_metrics(self, user_id: UUID, user_currency: str = "USD") -> PortfolioMetrics:
         """
         Calcule toutes les métriques du portfolio en temps réel.
         All values are converted to the user's preferred currency.
@@ -86,48 +87,53 @@ class PortfolioCalculator:
         breakdown_by_asset_type = self._calculate_asset_type_breakdown(investments, total_value, user_currency)
 
         # Calculer les performeurs (with currency conversion)
-        top_performers, worst_performers = self._calculate_performers(investments, user_currency)
+        performers = self._calculate_performers(investments, user_currency)
 
         # Calculer le score de diversification
         diversification_score = self._calculate_diversification_score(
             breakdown_by_country, breakdown_by_sector, breakdown_by_asset_type
         )
 
-        return {
-            "user_id": user_id,
-            "total_value": total_value,
-            "total_cost": total_cost,
-            "total_gain_loss": total_gain_loss,
-            "total_gain_loss_percent": total_gain_loss_percent,
-            "diversification_score": diversification_score,
-            "investment_count": len(investments),
-            "breakdown_by_country": breakdown_by_country,
-            "breakdown_by_sector": breakdown_by_sector,
-            "breakdown_by_asset_type": breakdown_by_asset_type,
-            "top_performers": top_performers,
-            "worst_performers": worst_performers,
-            "currency": user_currency
-        }
+        return PortfolioMetrics(
+            user_id=user_id,
+            total_value=total_value,
+            total_cost=total_cost,
+            total_gain_loss=total_gain_loss,
+            total_gain_loss_percent=total_gain_loss_percent,
+            diversification_score=diversification_score.score,
+            investment_count=len(investments),
+            breakdown_by_country=breakdown_by_country.breakdowns,
+            breakdown_by_sector=breakdown_by_sector.breakdowns,
+            breakdown_by_asset_type=breakdown_by_asset_type.breakdowns,
+            top_performers=performers.top_performers,
+            worst_performers=performers.worst_performers,
+            currency=user_currency,
+        )
     
-    def _empty_portfolio_metrics(self, user_id: UUID, user_currency: str = "USD") -> Dict:
+    def _empty_portfolio_metrics(self, user_id: UUID, user_currency: str = "USD") -> PortfolioMetrics:
         """Retourne des métriques vides pour un portfolio sans investissements."""
-        return {
-            "user_id": user_id,
-            "total_value": 0,
-            "total_cost": 0,
-            "total_gain_loss": 0,
-            "total_gain_loss_percent": 0,
-            "diversification_score": 0,
-            "investment_count": 0,
-            "breakdown_by_country": {},
-            "breakdown_by_sector": {},
-            "breakdown_by_asset_type": {},
-            "top_performers": [],
-            "worst_performers": [],
-            "currency": user_currency
-        }
+        return PortfolioMetrics(
+            user_id=user_id,
+            total_value=Decimal(0),
+            total_cost=Decimal(0),
+            total_gain_loss=Decimal(0),
+            total_gain_loss_percent=Decimal(0),
+            diversification_score=0,
+            investment_count=0,
+            breakdown_by_country={},
+            breakdown_by_sector={},
+            breakdown_by_asset_type={},
+            top_performers=[],
+            worst_performers=[],
+            currency=user_currency,
+        )
     
-    def _calculate_country_breakdown(self, investments: List[InvestmentModel], total_value: Decimal, user_currency: str) -> Dict:
+    def _calculate_country_breakdown(
+        self,
+        investments: List[InvestmentModel],
+        total_value: Decimal,
+        user_currency: str,
+    ) -> PortfolioBreakdownMap:
         """Calcule la répartition par pays avec conversion de devise."""
         country_totals = {}
         country_counts = {}
@@ -150,16 +156,23 @@ class PortfolioCalculator:
             country_totals[country] += value
             country_counts[country] += 1
 
-        return {
-            country: {
-                "value": float(total),
-                "percentage": float((total / total_value) * 100) if total_value > 0 else 0,
-                "count": country_counts[country]
+        return PortfolioBreakdownMap(
+            breakdowns={
+                country: PortfolioBreakdownItem(
+                    value=float(total),
+                    percentage=float((total / total_value) * 100) if total_value > 0 else 0,
+                    count=country_counts[country],
+                )
+                for country, total in country_totals.items()
             }
-            for country, total in country_totals.items()
-        }
+        )
     
-    def _calculate_sector_breakdown(self, investments: List[InvestmentModel], total_value: Decimal, user_currency: str) -> Dict:
+    def _calculate_sector_breakdown(
+        self,
+        investments: List[InvestmentModel],
+        total_value: Decimal,
+        user_currency: str,
+    ) -> PortfolioBreakdownMap:
         """Calcule la répartition par secteur avec conversion de devise."""
         sector_totals = {}
         sector_counts = {}
@@ -182,16 +195,23 @@ class PortfolioCalculator:
             sector_totals[sector] += value
             sector_counts[sector] += 1
 
-        return {
-            sector: {
-                "value": float(total),
-                "percentage": float((total / total_value) * 100) if total_value > 0 else 0,
-                "count": sector_counts[sector]
+        return PortfolioBreakdownMap(
+            breakdowns={
+                sector: PortfolioBreakdownItem(
+                    value=float(total),
+                    percentage=float((total / total_value) * 100) if total_value > 0 else 0,
+                    count=sector_counts[sector],
+                )
+                for sector, total in sector_totals.items()
             }
-            for sector, total in sector_totals.items()
-        }
+        )
     
-    def _calculate_asset_type_breakdown(self, investments: List[InvestmentModel], total_value: Decimal, user_currency: str) -> Dict:
+    def _calculate_asset_type_breakdown(
+        self,
+        investments: List[InvestmentModel],
+        total_value: Decimal,
+        user_currency: str,
+    ) -> PortfolioBreakdownMap:
         """Calcule la répartition par type d'actif avec conversion de devise."""
         asset_type_totals = {}
         asset_type_counts = {}
@@ -214,16 +234,22 @@ class PortfolioCalculator:
             asset_type_totals[asset_type] += value
             asset_type_counts[asset_type] += 1
 
-        return {
-            asset_type: {
-                "value": float(total),
-                "percentage": float((total / total_value) * 100) if total_value > 0 else 0,
-                "count": asset_type_counts[asset_type]
+        return PortfolioBreakdownMap(
+            breakdowns={
+                asset_type: PortfolioBreakdownItem(
+                    value=float(total),
+                    percentage=float((total / total_value) * 100) if total_value > 0 else 0,
+                    count=asset_type_counts[asset_type],
+                )
+                for asset_type, total in asset_type_totals.items()
             }
-            for asset_type, total in asset_type_totals.items()
-        }
+        )
     
-    def _calculate_performers(self, investments: List[InvestmentModel], user_currency: str) -> tuple:
+    def _calculate_performers(
+        self,
+        investments: List[InvestmentModel],
+        user_currency: str,
+    ) -> PortfolioPerformers:
         """Calcule les meilleurs et pires performeurs avec conversion de devise."""
         # Filtrer les investissements avec des données de performance
         investments_with_performance = [
@@ -232,7 +258,7 @@ class PortfolioCalculator:
         ]
 
         # Calculer les performances
-        performances = []
+        performances: List[PortfolioPerformer] = []
         for inv in investments_with_performance:
             cost_original = inv.purchase_price * inv.quantity
             current_value_original = inv.current_price * inv.quantity
@@ -246,47 +272,61 @@ class PortfolioCalculator:
 
             if cost > 0:
                 gain_loss_percent = ((current_value - cost) / cost) * 100
-                performances.append({
-                    "investment_id": inv.id,
-                    "symbol": inv.symbol,
-                    "name": inv.name,
-                    "gain_loss_percent": gain_loss_percent
-                })
+                performances.append(
+                    PortfolioPerformer(
+                        investment_id=inv.id,
+                        symbol=inv.symbol,
+                        name=inv.name,
+                        gain_loss_percent=gain_loss_percent,
+                    )
+                )
 
         # Trier par performance
-        performances.sort(key=lambda x: x["gain_loss_percent"], reverse=True)
+        performances.sort(key=lambda performer: performer.gain_loss_percent, reverse=True)
 
         # Top 3 et bottom 3
         top_performers = performances[:3]
         worst_performers = performances[-3:]
 
-        return top_performers, worst_performers
+        return PortfolioPerformers(
+            top_performers=top_performers,
+            worst_performers=worst_performers,
+        )
     
-    def _calculate_diversification_score(self, country_breakdown: Dict, sector_breakdown: Dict, asset_type_breakdown: Dict) -> float:
+    def _calculate_diversification_score(
+        self,
+        country_breakdown: PortfolioBreakdownMap,
+        sector_breakdown: PortfolioBreakdownMap,
+        asset_type_breakdown: PortfolioBreakdownMap,
+    ) -> DiversificationScore:
         """Calcule le score de diversification basé sur l'indice de Herfindahl."""
         # Calculer l'indice de Herfindahl pour chaque catégorie
         country_herfindahl = sum(
-            (breakdown["percentage"] / 100) ** 2 
-            for breakdown in country_breakdown.values()
+            (breakdown.percentage / 100) ** 2 
+            for breakdown in country_breakdown.breakdowns.values()
         )
         
         sector_herfindahl = sum(
-            (breakdown["percentage"] / 100) ** 2 
-            for breakdown in sector_breakdown.values()
+            (breakdown.percentage / 100) ** 2 
+            for breakdown in sector_breakdown.breakdowns.values()
         )
         
         asset_type_herfindahl = sum(
-            (breakdown["percentage"] / 100) ** 2 
-            for breakdown in asset_type_breakdown.values()
+            (breakdown.percentage / 100) ** 2 
+            for breakdown in asset_type_breakdown.breakdowns.values()
         )
         
         # Score de diversification moyen (plus l'indice est bas, plus la diversification est bonne)
         avg_herfindahl = (country_herfindahl + sector_herfindahl + asset_type_herfindahl) / 3
         diversification_score = (1 - avg_herfindahl) * 100
         
-        return max(0, diversification_score)
+        return DiversificationScore(score=max(0, diversification_score))
     
-    def calculate_investment_metrics(self, investment: InvestmentModel, user_currency: str = None) -> Dict:
+    def calculate_investment_metrics(
+        self,
+        investment: InvestmentModel,
+        user_currency: str = None,
+    ) -> InvestmentMetrics:
         """
         Calcule les métriques d'un investissement spécifique.
 
@@ -296,12 +336,12 @@ class PortfolioCalculator:
         """
         print("Calculating metrics for investment:", investment.id)
         if investment.current_price is None:
-            return {
-                "current_value": None,
-                "gain_loss": None,
-                "gain_loss_percent": None,
-                "performance_status": "unknown"
-            }
+            return InvestmentMetrics(
+                current_value=None,
+                gain_loss=None,
+                gain_loss_percent=None,
+                performance_status="unknown",
+            )
 
         current_value = investment.current_price * investment.quantity
         total_cost = investment.purchase_price * investment.quantity
@@ -341,9 +381,9 @@ class PortfolioCalculator:
         else:
             performance_status = "neutral"
 
-        return {
-            "current_value": float(current_value),
-            "gain_loss": float(gain_loss),
-            "gain_loss_percent": float(gain_loss_percent),
-            "performance_status": performance_status
-        }
+        return InvestmentMetrics(
+            current_value=float(current_value),
+            gain_loss=float(gain_loss),
+            gain_loss_percent=float(gain_loss_percent),
+            performance_status=performance_status,
+        )
