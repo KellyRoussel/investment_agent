@@ -143,6 +143,8 @@ export interface PortfolioMetrics {
 export interface PortfolioHistoryPoint {
   timestamp: string;
   total_value: number;
+  total_cost: number;
+  total_gain_loss: number;
 }
 
 export interface PortfolioHistoryResponse {

@@ -64,6 +64,8 @@ def get_portfolio_price_history(
         )
 
     totals: dict[date, float] = defaultdict(float)
+    costs: dict[date, float] = defaultdict(float)
+
     for investment in investments:
         if investment.purchase_date and investment.purchase_date > end_date:
             continue
@@ -77,6 +79,17 @@ def get_portfolio_price_history(
             history_start,
             end_date,
         )
+
+        # Convert purchase price to user's currency
+        purchase_price_in_user_currency = investment.purchase_price
+        if investment.currency != user_currency:
+            rates = exchange_rate_histories.get(investment.currency, {})
+            purchase_date_time = datetime.combine(investment.purchase_date, datetime.min.time()) if investment.purchase_date else None
+            if purchase_date_time:
+                exchange_rate = rates.get(purchase_date_time)
+                if exchange_rate:
+                    purchase_price_in_user_currency = float(investment.purchase_price) * exchange_rate
+
         for point in history:
             # if point date is 2025-11-27, print value
             price = point.price
@@ -99,10 +112,16 @@ def get_portfolio_price_history(
                 converted_price = price * exchange_rate if exchange_rate else price
 
             totals[point_date] += float(converted_price) * float(investment.quantity)
-            
+            costs[point_date] += float(purchase_price_in_user_currency) * float(investment.quantity)
+
     data_points = [
-        PortfolioHistoryPoint(timestamp=date_val, total_value=value)
-        for date_val, value in sorted(totals.items(), key=lambda item: item[0])
+        PortfolioHistoryPoint(
+            timestamp=date_val,
+            total_value=totals[date_val],
+            total_cost=costs[date_val],
+            total_gain_loss=totals[date_val] - costs[date_val]
+        )
+        for date_val in sorted(totals.keys())
     ]
     
 

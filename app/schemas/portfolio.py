@@ -106,6 +106,8 @@ class PortfolioHistoryPoint(BaseSchema):
 
     timestamp: date = Field(..., description="Value date")
     total_value: float = Field(..., description="Total portfolio value")
+    total_cost: float = Field(..., description="Total cost invested")
+    total_gain_loss: float = Field(..., description="Total gain/loss")
 
 
 class PortfolioHistoryResponse(BaseSchema):

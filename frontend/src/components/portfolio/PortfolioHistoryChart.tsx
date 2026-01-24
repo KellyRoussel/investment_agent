@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Line } from 'recharts';
 import { format, subMonths, subYears, parseISO } from 'date-fns';
 import { Card } from '@components/common/Card';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
 import { investmentsService } from '@services/investmentsService';
 import { portfolioService } from '@services/portfolioService';
 import { formatCurrency } from '@utils/formatters';
-import type { PortfolioHistoryPoint } from '@types/index';
+import type { PortfolioHistoryPoint } from '@/types';
 
 interface PortfolioHistoryChartProps {
   currency?: string;
@@ -20,6 +20,8 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('3M');
   const [investmentEvents, setInvestmentEvents] = useState<Record<string, string[]>>({});
+  const [showPortfolioValue, setShowPortfolioValue] = useState(true);
+  const [showGainLoss, setShowGainLoss] = useState(true);
 
   useEffect(() => {
     fetchHistory();
@@ -88,6 +90,10 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
         normalizedEvents[dateKey] = Array.from(eventsByDate[dateKey]).sort();
       });
 
+      console.log('Investment events:', normalizedEvents);
+      console.log('Chart data points (first 5):', response.data_points.slice(0, 5));
+      console.log('Investments:', investments.slice(0, 3));
+
       setData(response.data_points);
       setInvestmentEvents(normalizedEvents);
     } catch (err: any) {
@@ -113,20 +119,49 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
   };
 
   const investmentGuideDates = Object.keys(investmentEvents).sort();
+  console.log('Investment guide dates to render:', investmentGuideDates);
+
+  const InvestmentLabel = (props: any) => {
+    const { viewBox } = props;
+    if (!viewBox) return null;
+
+    return (
+      <g>
+        <circle
+          cx={viewBox.x}
+          cy={viewBox.y + 10}
+          r={4}
+          fill="#f59e0b"
+          stroke="#fbbf24"
+          strokeWidth={2}
+        />
+      </g>
+    );
+  };
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0].payload;
       const dateKey = format(parseISO(dataPoint.timestamp), 'yyyy-MM-dd');
       const investmentsForDate = investmentEvents[dateKey] || [];
+      const gainLoss = dataPoint.total_gain_loss || 0;
+      const portfolioValueColor = isPositive ? '#10b981' : '#ef4444';
+
       return (
         <div className="bg-[#151932] border border-[#1f2544] rounded-lg p-3 shadow-xl">
           <p className="text-sm text-gray-400 mb-1">
             {format(parseISO(dataPoint.timestamp), 'MMM d, yyyy')}
           </p>
-          <p className="text-base font-bold text-white">
-            {formatCurrency(dataPoint.total_value, currency)}
-          </p>
+          {showPortfolioValue && (
+            <p className="text-base font-bold" style={{ color: portfolioValueColor }}>
+              Portfolio: {formatCurrency(dataPoint.total_value, currency)}
+            </p>
+          )}
+          {showGainLoss && (
+            <p className="text-sm font-medium text-[#3b82f6]">
+              Gain/Loss: {formatCurrency(gainLoss, currency)}
+            </p>
+          )}
           {investmentsForDate.length > 0 && (
             <div className="mt-2">
               <p className="text-xs uppercase tracking-wide text-[#22d3ee]">Investissements</p>
@@ -182,7 +217,25 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
   return (
     <Card>
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">Portfolio Value History</h3>
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-2">Portfolio Value History</h3>
+          <div className="flex gap-4 text-xs">
+            <button
+              onClick={() => setShowPortfolioValue(!showPortfolioValue)}
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <div className={`w-3 h-0.5 ${isPositive ? 'bg-[#10b981]' : 'bg-[#ef4444]'} ${!showPortfolioValue ? 'opacity-30' : ''}`}></div>
+              <span className={`${showPortfolioValue ? 'text-gray-400' : 'text-gray-600'}`}>Portfolio Value</span>
+            </button>
+            <button
+              onClick={() => setShowGainLoss(!showGainLoss)}
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <div className={`w-3 h-0.5 bg-[#3b82f6] ${!showGainLoss ? 'opacity-30' : ''}`}></div>
+              <span className={`${showGainLoss ? 'text-gray-400' : 'text-gray-600'}`}>Total Gain/Loss</span>
+            </button>
+          </div>
+        </div>
         <div className="flex gap-2">
           {timeRanges.map((range) => (
             <button
@@ -223,30 +276,71 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
             stroke="#6b7280"
             style={{ fontSize: '12px' }}
           />
-          <YAxis
-            tickFormatter={(value) => formatCurrency(value, currency)}
-            stroke="#6b7280"
-            style={{ fontSize: '12px' }}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          {investmentGuideDates.map((dateKey) => (
-            <ReferenceLine
-              key={dateKey}
-              x={dateKey}
-              stroke="#f59e0b"
-              strokeDasharray="4 4"
-              strokeOpacity={0.6}
+          {showPortfolioValue && (
+            <YAxis
+              yAxisId="left"
+              tickFormatter={(value) => formatCurrency(value, currency)}
+              stroke="#6b7280"
+              style={{ fontSize: '12px' }}
             />
-          ))}
-          <Area
-            type="monotone"
-            dataKey="total_value"
-            stroke={isPositive ? '#10b981' : '#ef4444'}
-            strokeWidth={2}
-            fill="url(#colorPortfolioValue)"
-            dot={false}
-            activeDot={{ r: 4, fill: isPositive ? '#10b981' : '#ef4444' }}
-          />
+          )}
+          {showGainLoss && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tickFormatter={(value) => formatCurrency(value, currency)}
+              stroke="#3b82f6"
+              style={{ fontSize: '12px' }}
+            />
+          )}
+          <Tooltip content={<CustomTooltip />} />
+          {showGainLoss && (
+            <ReferenceLine
+              yAxisId="right"
+              y={0}
+              stroke="#3b82f6"
+              strokeDasharray="4 4"
+              strokeOpacity={0.5}
+            />
+          )}
+          {investmentGuideDates.map((dateKey) => {
+            console.log('Rendering ReferenceLine for:', dateKey);
+            return (
+              <ReferenceLine
+                key={dateKey}
+                x={dateKey}
+                stroke="#f59e0b"
+                strokeDasharray="3 3"
+                strokeWidth={2}
+                strokeOpacity={0.8}
+                label={<InvestmentLabel />}
+              />
+            );
+          })}
+          {showPortfolioValue && (
+            <Area
+              yAxisId="left"
+              type="monotone"
+              dataKey="total_value"
+              stroke={isPositive ? '#10b981' : '#ef4444'}
+              strokeWidth={2}
+              fill="url(#colorPortfolioValue)"
+              dot={false}
+              activeDot={{ r: 4, fill: isPositive ? '#10b981' : '#ef4444' }}
+            />
+          )}
+          {showGainLoss && (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="total_gain_loss"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, fill: '#3b82f6', stroke: '#3b82f6', strokeWidth: 2 }}
+              isAnimationActive={false}
+            />
+          )}
         </AreaChart>
       </ResponsiveContainer>
     </Card>
