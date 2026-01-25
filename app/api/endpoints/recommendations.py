@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.repositories import InvestmentRepository
 from app.services.portfolio_calculator import PortfolioCalculator
-from app.services.ai_agents import launch_agents
+from app.services.ai_agents import launch_agents_stream
 from app.utils.auth import get_current_user
 from app.models.user import User
 from app.domain.entities.investment import Investment as DomainInvestment, Vehicle
@@ -48,23 +49,23 @@ def _db_investment_to_domain(db_investment) -> DomainInvestment:
     )
 
 
-@router.post("/recommendations/generate", response_model=RecommendationResponse)
+@router.get("/recommendations/generate")
 async def generate_recommendation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> RecommendationResponse:
+) -> StreamingResponse:
     """
-    Generate AI-powered investment recommendations based on the user's current portfolio.
+    Generate AI-powered investment recommendations with Server-Sent Events streaming.
 
-    This endpoint analyzes the user's portfolio and market trends to provide
-    personalized investment recommendations using AI agents.
+    This endpoint streams events as the AI agents process the request, providing
+    real-time visibility into tool calls, agent transitions, and intermediate outputs.
 
     Args:
         current_user: Current authenticated user
         db: Database session
 
     Returns:
-        RecommendationResponse with AI-generated investment recommendation
+        StreamingResponse with SSE events
     """
     investment_repo = InvestmentRepository(db)
     calculator = PortfolioCalculator(db)
@@ -86,13 +87,19 @@ async def generate_recommendation(
         current_user.currency_preference
     )
 
-    try:
-        # Generate recommendation using AI agents
-        recommendation = await launch_agents(portfolio, portfolio_metrics)
+    async def event_generator():
+        try:
+            async for event in launch_agents_stream(portfolio, portfolio_metrics):
+                yield event.to_sse()
+        except Exception as e:
+            yield f"data: {{'type': 'error', 'message': '{str(e)}'}}\n\n"
 
-        return RecommendationResponse(recommendation=recommendation)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate recommendation: {str(e)}"
-        ) from e
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )

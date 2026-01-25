@@ -160,3 +160,45 @@ export interface APIError {
   detail: string;
   status?: number;
 }
+
+// AI Agent Streaming Event types
+export type AgentEventType = 'agent_change' | 'tool_call' | 'tool_output' | 'message' | 'final_output' | 'error';
+
+export interface AgentChangeEvent {
+  type: 'agent_change';
+  agent_name: string;
+}
+
+export interface ToolCallEvent {
+  type: 'tool_call';
+  tool_name: string;
+  arguments: string;
+}
+
+export interface ToolOutputEvent {
+  type: 'tool_output';
+  output: string;
+}
+
+export interface MessageEvent {
+  type: 'message';
+  content: string;
+}
+
+export interface FinalOutputEvent {
+  type: 'final_output';
+  recommendation: string;
+}
+
+export interface ErrorEvent {
+  type: 'error';
+  message: string;
+}
+
+export type AgentStreamEvent =
+  | AgentChangeEvent
+  | ToolCallEvent
+  | ToolOutputEvent
+  | MessageEvent
+  | FinalOutputEvent
+  | ErrorEvent;
