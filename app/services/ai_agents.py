@@ -120,9 +120,9 @@ async def launch_agents_stream(user_portfolio: list[Investment], portfolio_metri
 {chr(10).join(portfolio_summary) if portfolio_summary else "Empty portfolio - first investment!"}
 
 ## DIVERSIFICATION METRICS
-- Breakdown by country: {', '.join(f'{k}: {v.percentage}%' for k, v in portfolio_metrics.breakdown_by_country.items())}"
-- Breakdown by sector: {', '.join(f'{k}: {v.percentage}%' for k, v in portfolio_metrics.breakdown_by_sector.items())}"
-- Breakdown by asset type: {', '.join(f'{k}: {v.percentage}%' for k, v in portfolio_metrics.breakdown_by_asset_type.items())}"
+- Breakdown by country: {', '.join(f'{k}: {round(v.percentage, 2)}%' for k, v in portfolio_metrics.breakdown_by_country.items())}"
+- Breakdown by sector: {', '.join(f'{k}: {round(v.percentage, 2)}%' for k, v in portfolio_metrics.breakdown_by_sector.items())}"
+- Breakdown by asset type: {', '.join(f'{k}: {round(v.percentage, 2)}%' for k, v in portfolio_metrics.breakdown_by_asset_type.items())}"
 
 ## YOUR TASK
 Find 2 investment recommendations for January 2026. Follow your workflow steps carefully.
@@ -139,7 +139,7 @@ Start with STEP 1: broad market research.
         if event.type == "agent_updated_stream_event":
             yield AgentEvent("agent_change", {"agent_name": event.new_agent.name})
         elif event.type == "run_item_stream_event":
-            print(f"DEBUG: Run item event type: {event.item.type}")
+            print(f"DEBUG: Run item event type: {event.item.type}, raw_item type: {type(event.item.raw_item).__name__ if hasattr(event.item, 'raw_item') else 'N/A'}")
             if event.item.type == "tool_call_item":
                 print(f"DEBUG: Tool call item: {event.item}")
                 raw = event.item.raw_item
@@ -147,9 +147,13 @@ Start with STEP 1: broad market research.
 
                 # Handle WebSearchTool (hosted tool)
                 if raw_type_name == "ResponseFunctionWebSearch":
-                    # Extract search query from the action if available
+                    # Extract search query - debug the structure
+                    print(f"DEBUG: WebSearch raw attrs: {dir(raw)}")
                     query = ""
-                    if hasattr(raw, "action") and raw.action:
+                    # Try multiple possible locations for the query
+                    if hasattr(raw, "query"):
+                        query = raw.query or ""
+                    elif hasattr(raw, "action") and raw.action:
                         query = getattr(raw.action, "query", "") or ""
                     yield AgentEvent("tool_call", {
                         "tool_name": "web_search",
@@ -164,8 +168,17 @@ Start with STEP 1: broad market research.
             elif event.item.type == "tool_call_output_item":
                 output_preview = str(event.item.output)[:1000]
                 yield AgentEvent("tool_output", {"output": output_preview})
+            elif event.item.type == "web_search_call_output_item":
+                # Handle web search results from hosted WebSearchTool
+                output_preview = str(event.item.output)[:1000] if hasattr(event.item, 'output') else "Web search completed"
+                yield AgentEvent("tool_output", {"output": output_preview})
             elif event.item.type == "message_output_item":
                 message_text = ItemHelpers.text_message_output(event.item)
                 yield AgentEvent("message", {"content": message_text})
+            else:
+                # Log unhandled event types to help debug
+                print(f"DEBUG: Unhandled item type: {event.item.type}")
+                if hasattr(event.item, 'raw_item'):
+                    print(f"DEBUG: raw_item attrs: {dir(event.item.raw_item)}")
 
     yield AgentEvent("final_output", {"recommendation": result.final_output})

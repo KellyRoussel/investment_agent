@@ -16,7 +16,8 @@ interface StreamingEvent {
 function parseToolInput(arguments_: string): string | null {
   try {
     const parsed = JSON.parse(arguments_);
-    return parsed.input || null;
+    // Handle both regular tools (input) and web_search (query)
+    return parsed.input || parsed.query || null;
   } catch {
     return null;
   }
