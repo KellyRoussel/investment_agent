@@ -2,12 +2,13 @@ from typing import Dict
 from urllib import response
 from agents import Agent, Runner, WebSearchTool
 import os
-
+from app.config import settings
 from jinja2 import Template
 from openai import OpenAI
-from domain.entities.investment import Investment, Vehicle
-from prompts.orchestrator import orchestrator_prompt_template
-
+from app.models.portfolio_metrics import PortfolioMetrics
+from app.domain.entities.investment import Investment, Vehicle
+from app.prompts.orchestrator import orchestrator_prompt_template
+from agents import set_default_openai_key
 
 trend_search_agent = Agent(
     name="Trend Search Agent",
@@ -25,7 +26,7 @@ data_agent = Agent(
 )
 
 async def fill_investment_data(name: str) -> Investment:
-    client = OpenAI()
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
     result = client.responses.parse(
     model="gpt-4.1",
     tools=[ { "type": "web_search" },],
@@ -38,8 +39,8 @@ async def fill_investment_data(name: str) -> Investment:
 
     return result.output_parsed
 
-async def launch_agents(user_portfolio: list[Investment], portfolio_metrics: Dict):
-
+async def launch_agents(user_portfolio: list[Investment], portfolio_metrics: PortfolioMetrics) -> str:
+    set_default_openai_key(settings.OPENAI_API_KEY)
     orchestrator_instructions = Template(orchestrator_prompt_template).render(user_portfolio=user_portfolio, portfolio_metrics=portfolio_metrics)
 
 
@@ -72,5 +73,6 @@ async def launch_agents(user_portfolio: list[Investment], portfolio_metrics: Dic
                             {portfolio_metrics}
                             It is really important that she keeps a diversified portfolio across different asset classes, sectors, geographies, risk levels etc...
                             Today is the end of december 2025 and she has 50 euros to invest this month.
-                            Based on her profile, current portfolio and market trends, provide a detailed investment recommendation with precise investment options.""")
+                            Based on her profile, current portfolio and market trends, provide a detailed investment recommendation with precise investment options.
+                            Be precise in your recommendations and suggest up to 2 investments max for this month.""")
     return result.final_output

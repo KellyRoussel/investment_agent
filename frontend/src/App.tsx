@@ -7,6 +7,7 @@ import { Signup } from '@pages/Signup';
 import { Profile } from '@pages/Profile';
 import { Investments } from '@pages/Investments';
 import { Portfolio } from '@pages/Portfolio';
+import { Recommendations } from '@pages/Recommendations';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/investments" element={<Investments />} />
+              <Route path="/recommendations" element={<Recommendations />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/" element={<Navigate to="/portfolio" replace />} />
             </Route>

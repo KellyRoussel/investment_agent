@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.endpoints.auth import router as auth_router
 from app.api.endpoints.investments import router as investments_router
 from app.api.endpoints.portfolio import router as portfolio_router
+from app.api.endpoints.recommendations import router as recommendations_router
 from app.api.endpoints.users import router as users_router
 
 app = FastAPI(title="Investment Agent API")
@@ -29,5 +30,6 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(investments_router, tags=["Investments"])
 app.include_router(portfolio_router, tags=["Portfolio"])
+app.include_router(recommendations_router, tags=["Recommendations"])
 app.include_router(users_router, tags=["Users"])
 

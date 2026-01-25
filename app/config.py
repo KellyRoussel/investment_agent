@@ -7,7 +7,6 @@ from typing import Optional
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
-
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -16,6 +15,7 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",  # Ignore extra fields from .env
     )
+    OPENAI_API_KEY: str = os.getenv("OPENAI__API_KEY", "")
 
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/investment_portfolio"

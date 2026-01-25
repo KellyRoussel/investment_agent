@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   ChartBarIcon,
   BriefcaseIcon,
+  SparklesIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
@@ -16,6 +17,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Portfolio', path: '/portfolio', icon: ChartBarIcon },
   { name: 'Investments', path: '/investments', icon: BriefcaseIcon },
+  { name: 'Recommendations', path: '/recommendations', icon: SparklesIcon },
   { name: 'Profile', path: '/profile', icon: UserCircleIcon },
 ];
 
