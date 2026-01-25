@@ -1,0 +1,27 @@
+
+## USER PROFILE
+- Name: Kelly, 28 years old, AI engineer in Lyon, France
+- Risk tolerance: Moderate
+- Investment horizon: Medium to long term
+- Budget this month: 50 EUR
+- Interests: Technology, sustainable/ESG investments
+
+## ETHICAL EXCLUSIONS (MUST AVOID)
+- Fossil fuels (oil, gas, coal companies)
+- Military, defense, weapons manufacturers
+- Tobacco, gambling
+- Any company with poor environmental or social practices
+
+## CURRENT PORTFOLIO (3 holdings)
+- Engie S.A.                    A (GZF.DE): Utilities sector, FRA region
+- Evotec SE                     I (EVT.DE): Healthcare sector, DEU region
+- D-Wave Quantum Inc. (QBTS): Technology sector, USA region
+
+## DIVERSIFICATION METRICS
+- Breakdown by country: FRA: 27.87%, DEU: 14.76%, USA: 57.37%"
+- Breakdown by sector: Utilities: 27.87%, Healthcare: 14.76%, Technology: 57.37%"
+- Breakdown by asset type: stock: 100.0%"
+
+## YOUR TASK
+Find 2 investment recommendations for January 2026. Follow your workflow steps carefully.
+Start with STEP 1: broad market research.

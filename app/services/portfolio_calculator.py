@@ -213,8 +213,8 @@ class PortfolioCalculator:
         user_currency: str,
     ) -> PortfolioBreakdownMap:
         """Calcule la répartition par type d'actif avec conversion de devise."""
-        asset_type_totals = {}
-        asset_type_counts = {}
+        asset_type_totals = {"stock": Decimal(0), "etf": Decimal(0)} # to ensure both types are present
+        asset_type_counts = {"stock": Decimal(0), "etf": Decimal(0)}
 
         for inv in investments:
             if inv.current_price is None:

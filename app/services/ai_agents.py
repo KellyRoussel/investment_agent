@@ -25,7 +25,7 @@ class InvestmentResearchWorkflow:
 
     def __init__(self, user_portfolio: list[Investment], portfolio_metrics: PortfolioMetrics):
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = "gpt-4.1-mini-2025-04-14"
+        self.model = "gpt-4.1"
         self.user_portfolio = user_portfolio
         self.portfolio_metrics = portfolio_metrics
         self.user_context = self._build_user_context()
@@ -44,7 +44,7 @@ class InvestmentResearchWorkflow:
 - Risk tolerance: Moderate
 - Investment horizon: Medium to long term
 - Budget this month: 50 EUR
-- Interests: Technology, sustainable/ESG investments
+- Interests: Technology, sustainable/ESG investments, can eventually invest in other sectors to
 
 ## ETHICAL EXCLUSIONS (MUST AVOID)
 - Fossil fuels (oil, gas, coal companies)
@@ -237,24 +237,24 @@ async def launch_agents_stream(
     market_research, searches = workflow.step1_market_discovery()
     for search in searches:
         yield AgentEvent("tool_call", {"tool_name": "web_search", "arguments": json.dumps(search)})
-    yield AgentEvent("step_complete", {"step": 1, "summary": market_research[:500]})
+    yield AgentEvent("step_complete", {"step": 1, "summary": market_research})
 
     # Step 2: Build Candidates
     yield AgentEvent("step_start", {"step": 2, "name": "Building Candidate List"})
     candidates = workflow.step2_build_candidates(market_research)
-    yield AgentEvent("step_complete", {"step": 2, "summary": candidates[:500]})
+    yield AgentEvent("step_complete", {"step": 2, "summary": candidates})
 
     # Step 3: Filter & Rank
     yield AgentEvent("step_start", {"step": 3, "name": "Ethical Screening & Portfolio Fit"})
     top_candidates = workflow.step3_filter_and_rank(candidates)
-    yield AgentEvent("step_complete", {"step": 3, "summary": top_candidates[:500]})
+    yield AgentEvent("step_complete", {"step": 3, "summary": top_candidates})
 
     # Step 4: Deep Research
     yield AgentEvent("step_start", {"step": 4, "name": "Deep Dive Research"})
     deep_research, searches = workflow.step4_deep_research(top_candidates)
     for search in searches:
         yield AgentEvent("tool_call", {"tool_name": "web_search", "arguments": json.dumps(search)})
-    yield AgentEvent("step_complete", {"step": 4, "summary": deep_research[:500]})
+    yield AgentEvent("step_complete", {"step": 4, "summary": deep_research})
 
     # Step 5: Final Recommendation
     yield AgentEvent("step_start", {"step": 5, "name": "Generating Recommendations"})

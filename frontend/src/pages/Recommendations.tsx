@@ -312,7 +312,7 @@ export function Recommendations() {
                           {step.summary && step.status === 'completed' && (
                             <div className="bg-[#0a0e27] rounded p-3 border border-[#1f2544]">
                               <div className="text-xs text-gray-500 mb-1 font-medium">Result</div>
-                              <div className="text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                              <div className="text-sm text-gray-300 whitespace-pre-wrap max-h-96 overflow-y-auto">
                                 {step.summary}
                               </div>
                             </div>
