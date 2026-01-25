@@ -24,10 +24,10 @@ RESEARCH_AGENT_INSTRUCTIONS = """You are a financial research specialist. Follow
 
 ### STEP 1: Market Discovery (Unbiased)
 Search for current market trends WITHOUT considering user preferences yet. Focus on:
-- "stock market trends January 2026"
-- "best performing sectors 2026"
-- "ETF inflows 2026" or "popular ETFs January 2026"
-- "emerging market opportunities 2026"
+- "stock market trends"
+- "best performing sectors"
+- "ETF inflows" or "popular ETFs"
+- "emerging market opportunities"
 Run 2-3 broad searches to get a comprehensive view of what's happening in the markets.
 
 ### STEP 2: Build Initial Candidate List
@@ -52,7 +52,7 @@ Prioritize investments that:
 
 ### STEP 5: Deep Dive Research
 For the top 3-4 candidates after filtering, search for more details:
-- "[investment name] performance 2025 2026"
+- "[investment name] performance"
 - "[investment name] analyst rating"
 - Current price and recent trend
 Gather concrete data: prices, YTD performance, expense ratios (for ETFs).
@@ -91,7 +91,7 @@ async def launch_agents_stream(user_portfolio: list[Investment], portfolio_metri
     """
     set_default_openai_key(settings.OPENAI_API_KEY)
     research_agent = Agent(
-        model="gpt-4.1-mini-2025-04-14",
+        model="gpt-4.1",
         name="Research Agent",
         instructions=RESEARCH_AGENT_INSTRUCTIONS,
         tools=[WebSearchTool()],
