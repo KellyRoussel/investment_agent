@@ -162,11 +162,18 @@ export interface APIError {
 }
 
 // AI Agent Streaming Event types
-export type AgentEventType = 'agent_change' | 'tool_call' | 'tool_output' | 'message' | 'final_output' | 'error';
+export type AgentEventType = 'step_start' | 'step_complete' | 'tool_call' | 'tool_output' | 'message' | 'final_output' | 'error';
 
-export interface AgentChangeEvent {
-  type: 'agent_change';
-  agent_name: string;
+export interface StepStartEvent {
+  type: 'step_start';
+  step: number;
+  name: string;
+}
+
+export interface StepCompleteEvent {
+  type: 'step_complete';
+  step: number;
+  summary: string;
 }
 
 export interface ToolCallEvent {
@@ -196,7 +203,8 @@ export interface ErrorEvent {
 }
 
 export type AgentStreamEvent =
-  | AgentChangeEvent
+  | StepStartEvent
+  | StepCompleteEvent
   | ToolCallEvent
   | ToolOutputEvent
   | MessageEvent

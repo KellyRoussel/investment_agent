@@ -1,74 +1,118 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { SparklesIcon, WrenchScrewdriverIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, WrenchScrewdriverIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { Card } from '@components/common/Card';
 import { Button } from '@components/common/Button';
 import { recommendationsService } from '@services/recommendationsService';
-import type { AgentStreamEvent, ToolCallEvent, ToolOutputEvent } from '@types/index';
+import type { AgentStreamEvent, ToolCallEvent, StepStartEvent, StepCompleteEvent } from '@types/index';
 
-interface StreamingEvent {
+interface ToolCall {
   id: number;
-  type: AgentStreamEvent['type'];
-  data: AgentStreamEvent;
-  timestamp: Date;
+  tool_name: string;
+  query: string | null;
 }
+
+interface WorkflowStep {
+  step: number;
+  name: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  summary?: string;
+  toolCalls: ToolCall[];
+}
+
+const WORKFLOW_STEPS: Pick<WorkflowStep, 'step' | 'name'>[] = [
+  { step: 1, name: 'Market Discovery' },
+  { step: 2, name: 'Building Candidate List' },
+  { step: 3, name: 'Ethical Screening & Portfolio Fit' },
+  { step: 4, name: 'Deep Dive Research' },
+  { step: 5, name: 'Generating Recommendations' },
+];
 
 function parseToolInput(arguments_: string): string | null {
   try {
     const parsed = JSON.parse(arguments_);
-    // Handle both regular tools (input) and web_search (query)
     return parsed.input || parsed.query || null;
   } catch {
     return null;
   }
 }
 
-function summarizeToolOutput(output: string): string {
-  // Try to extract key information from the output
-  const lines = output.split('\n').filter(line => line.trim());
-  if (lines.length <= 3) {
-    return output;
-  }
-  // Return first few meaningful lines
-  return lines.slice(0, 3).join('\n') + `\n... (${lines.length - 3} more lines)`;
-}
-
 export function Recommendations() {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [events, setEvents] = useState<StreamingEvent[]>([]);
-  const [currentAgent, setCurrentAgent] = useState<string | null>(null);
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
   const [activityExpanded, setActivityExpanded] = useState(true);
-  const eventIdRef = useRef(0);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+  const toolCallIdRef = useRef(0);
+  const currentStepRef = useRef<number | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
 
-  // Auto-collapse when recommendation arrives
   useEffect(() => {
     if (recommendation) {
       setActivityExpanded(false);
     }
   }, [recommendation]);
 
+  const toggleStepExpanded = (step: number) => {
+    setExpandedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(step)) {
+        next.delete(step);
+      } else {
+        next.add(step);
+      }
+      return next;
+    });
+  };
+
   const handleGenerateRecommendation = () => {
     setLoading(true);
     setError(null);
     setRecommendation(null);
-    setEvents([]);
-    setCurrentAgent('Orchestrator agent');
+    setWorkflowSteps(WORKFLOW_STEPS.map(s => ({ ...s, status: 'pending', toolCalls: [] })));
+    setExpandedSteps(new Set());
     setActivityExpanded(true);
-    eventIdRef.current = 0;
+    toolCallIdRef.current = 0;
+    currentStepRef.current = null;
 
     abortRef.current = recommendationsService.streamRecommendation((event: AgentStreamEvent) => {
-      const streamingEvent: StreamingEvent = {
-        id: eventIdRef.current++,
-        type: event.type,
-        data: event,
-        timestamp: new Date(),
-      };
+      if (event.type === 'step_start') {
+        const stepEvent = event as StepStartEvent;
+        currentStepRef.current = stepEvent.step;
+        setWorkflowSteps(prev => prev.map(s =>
+          s.step === stepEvent.step
+            ? { ...s, status: 'in_progress' }
+            : s
+        ));
+      }
 
-      if (event.type === 'agent_change') {
-        setCurrentAgent(event.agent_name);
+      if (event.type === 'step_complete') {
+        const stepEvent = event as StepCompleteEvent;
+        setWorkflowSteps(prev => prev.map(s =>
+          s.step === stepEvent.step
+            ? { ...s, status: 'completed', summary: stepEvent.summary }
+            : s
+        ));
+      }
+
+      if (event.type === 'tool_call') {
+        const toolEvent = event as ToolCallEvent;
+        // Capture current step NOW, before React batches the state update
+        const stepForThisToolCall = currentStepRef.current;
+        const toolCall: ToolCall = {
+          id: toolCallIdRef.current++,
+          tool_name: toolEvent.tool_name,
+          query: parseToolInput(toolEvent.arguments),
+        };
+        // Add tool call to the captured step
+        if (stepForThisToolCall !== null) {
+          setWorkflowSteps(prev => prev.map(s =>
+            s.step === stepForThisToolCall
+              ? { ...s, toolCalls: [...s.toolCalls, toolCall] }
+              : s
+          ));
+        }
       }
 
       if (event.type === 'final_output') {
@@ -77,8 +121,6 @@ export function Recommendations() {
       } else if (event.type === 'error') {
         setError(event.message);
         setLoading(false);
-      } else {
-        setEvents((prev) => [...prev, streamingEvent]);
       }
     });
   };
@@ -91,62 +133,21 @@ export function Recommendations() {
     setLoading(false);
   };
 
-  const getEventIcon = (type: AgentStreamEvent['type']) => {
-    switch (type) {
-      case 'agent_change':
-        return <ArrowPathIcon className="w-4 h-4 text-[#a78bfa]" />;
-      case 'tool_call':
-        return <WrenchScrewdriverIcon className="w-4 h-4 text-[#22d3ee]" />;
-      case 'tool_output':
-        return <CheckCircleIcon className="w-4 h-4 text-[#10b981]" />;
-      case 'message':
-        return <ChatBubbleLeftRightIcon className="w-4 h-4 text-[#f59e0b]" />;
+  const getStepIcon = (status: WorkflowStep['status']) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircleIcon className="w-5 h-5 text-[#10b981]" />;
+      case 'in_progress':
+        return (
+          <div className="w-5 h-5 border-2 border-[#22d3ee] border-t-transparent rounded-full animate-spin" />
+        );
       default:
-        return <SparklesIcon className="w-4 h-4 text-gray-400" />;
+        return <div className="w-5 h-5 rounded-full border-2 border-gray-600" />;
     }
   };
 
-  const renderEventContent = (event: StreamingEvent) => {
-    switch (event.data.type) {
-      case 'agent_change':
-        return (
-          <div className="text-[#a78bfa]">
-            <span className="font-medium">Agent switched to:</span> {event.data.agent_name}
-          </div>
-        );
-      case 'tool_call': {
-        const toolEvent = event.data as ToolCallEvent;
-        const inputText = parseToolInput(toolEvent.arguments);
-        return (
-          <div>
-            <div className="text-[#22d3ee] font-medium">{toolEvent.tool_name}</div>
-            {inputText && (
-              <p className="mt-1 text-gray-300 text-sm italic">"{inputText}"</p>
-            )}
-          </div>
-        );
-      }
-      case 'tool_output': {
-        const outputEvent = event.data as ToolOutputEvent;
-        const summary = summarizeToolOutput(outputEvent.output);
-        return (
-          <div>
-            <div className="text-[#10b981] font-medium">Result received</div>
-            <p className="mt-1 text-xs text-gray-400 whitespace-pre-wrap">{summary}</p>
-          </div>
-        );
-      }
-      case 'message':
-        return (
-          <div className="text-gray-300">
-            <span className="font-medium text-[#f59e0b]">Message:</span> {event.data.content.slice(0, 200)}
-            {event.data.content.length > 200 && '...'}
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
+  const currentStepName = workflowSteps.find(s => s.status === 'in_progress')?.name;
+  const completedSteps = workflowSteps.filter(s => s.status === 'completed').length;
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
@@ -174,8 +175,8 @@ export function Recommendations() {
           <div>
             <h2 className="text-xl font-bold text-white mb-2">Generate Investment Recommendation</h2>
             <p className="text-gray-400">
-              Our AI agent will analyze your current portfolio and market conditions to provide
-              personalized investment suggestions.
+              Our AI will analyze your current portfolio and market conditions through a 5-step
+              research workflow to provide personalized investment suggestions.
             </p>
           </div>
           <div className="flex gap-3 justify-center">
@@ -197,8 +198,8 @@ export function Recommendations() {
         </div>
       </Card>
 
-      {/* Agent Activity Card - Collapsible */}
-      {(loading || events.length > 0) && (
+      {/* Workflow Progress Card */}
+      {(loading || workflowSteps.length > 0) && (
         <Card>
           <div>
             <button
@@ -210,11 +211,11 @@ export function Recommendations() {
                   <WrenchScrewdriverIcon className="w-6 h-6 text-[#a78bfa]" />
                 </div>
                 <div className="text-left">
-                  <h2 className="text-xl font-bold text-white">Agent Activity</h2>
+                  <h2 className="text-xl font-bold text-white">Research Workflow</h2>
                   <p className="text-sm text-gray-400">
-                    {events.length} event{events.length !== 1 ? 's' : ''}
-                    {currentAgent && !activityExpanded && (
-                      <span> · Last: <span className="text-[#a78bfa]">{currentAgent}</span></span>
+                    {completedSteps} of {WORKFLOW_STEPS.length} steps completed
+                    {currentStepName && !activityExpanded && (
+                      <span> · <span className="text-[#22d3ee]">{currentStepName}</span></span>
                     )}
                   </p>
                 </div>
@@ -235,23 +236,97 @@ export function Recommendations() {
             </button>
 
             {activityExpanded && (
-              <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">
-                {events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex gap-3 p-3 bg-[#0a0e27] rounded-lg border border-[#1f2544]"
-                  >
-                    <div className="flex-shrink-0 mt-1">{getEventIcon(event.type)}</div>
-                    <div className="flex-1 min-w-0 text-sm">{renderEventContent(event)}</div>
-                    <div className="flex-shrink-0 text-xs text-gray-500">
-                      {event.timestamp.toLocaleTimeString()}
+              <div className="mt-6 space-y-3">
+                {workflowSteps.map((step) => {
+                  const isExpanded = expandedSteps.has(step.step) || step.status === 'in_progress';
+                  const hasDetails = step.toolCalls.length > 0 || step.summary;
+
+                  return (
+                    <div
+                      key={step.step}
+                      className={`rounded-lg border transition-colors ${
+                        step.status === 'in_progress'
+                          ? 'bg-[#22d3ee]/5 border-[#22d3ee]/30'
+                          : step.status === 'completed'
+                          ? 'bg-[#10b981]/5 border-[#10b981]/20'
+                          : 'bg-[#0a0e27] border-[#1f2544]'
+                      }`}
+                    >
+                      {/* Step Header */}
+                      <button
+                        onClick={() => hasDetails && step.status === 'completed' && toggleStepExpanded(step.step)}
+                        className={`w-full flex items-start gap-3 p-3 ${
+                          hasDetails && step.status === 'completed' ? 'cursor-pointer' : 'cursor-default'
+                        }`}
+                      >
+                        <div className="flex-shrink-0 mt-0.5">{getStepIcon(step.status)}</div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 font-mono">Step {step.step}</span>
+                            <span className={`font-medium ${
+                              step.status === 'in_progress'
+                                ? 'text-[#22d3ee]'
+                                : step.status === 'completed'
+                                ? 'text-white'
+                                : 'text-gray-400'
+                            }`}>
+                              {step.name}
+                            </span>
+                            {step.toolCalls.length > 0 && (
+                              <span className="text-xs text-gray-500">
+                                ({step.toolCalls.length} search{step.toolCalls.length !== 1 ? 'es' : ''})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {hasDetails && step.status === 'completed' && (
+                          <div className="flex-shrink-0">
+                            {isExpanded ? (
+                              <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                            ) : (
+                              <ChevronRightIcon className="w-4 h-4 text-gray-500" />
+                            )}
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Step Details (expanded) */}
+                      {isExpanded && hasDetails && (
+                        <div className="px-3 pb-3 pt-0 ml-8 space-y-3">
+                          {/* Tool calls / Web searches */}
+                          {step.toolCalls.length > 0 && (
+                            <div className="space-y-1">
+                              {step.toolCalls.map((tc) => (
+                                <div key={tc.id} className="flex items-center gap-2 text-sm">
+                                  <MagnifyingGlassIcon className="w-4 h-4 text-[#22d3ee] flex-shrink-0" />
+                                  <span className="text-gray-300">
+                                    <span className="text-[#22d3ee]">{tc.tool_name}</span>
+                                    {tc.query && <span className="text-gray-400 italic ml-2">"{tc.query}"</span>}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Step summary/result */}
+                          {step.summary && step.status === 'completed' && (
+                            <div className="bg-[#0a0e27] rounded p-3 border border-[#1f2544]">
+                              <div className="text-xs text-gray-500 mb-1 font-medium">Result</div>
+                              <div className="text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                                {step.summary}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
-                {loading && events.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
+                  );
+                })}
+
+                {loading && workflowSteps.every(s => s.status === 'pending') && (
+                  <div className="text-center py-4 text-gray-400">
                     <div className="animate-spin w-6 h-6 border-2 border-[#22d3ee] border-t-transparent rounded-full mx-auto mb-3" />
-                    Starting AI agents...
+                    Starting research workflow...
                   </div>
                 )}
               </div>
