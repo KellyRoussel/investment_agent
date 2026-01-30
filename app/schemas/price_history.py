@@ -2,12 +2,20 @@
 Schemas for price history data.
 """
 from datetime import datetime
+from enum import Enum as PyEnum
 from typing import List, Optional
 
 from pydantic import Field
 
-from app.models.price_history import DataQuality
 from .base import BaseSchema
+
+
+class DataQuality(PyEnum):
+    """Quality of price data."""
+    GOOD = "good"
+    DELAYED = "delayed"
+    ESTIMATED = "estimated"
+    MISSING = "missing"
 
 
 class PriceHistoryPoint(BaseSchema):

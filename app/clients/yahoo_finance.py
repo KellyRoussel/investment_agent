@@ -4,8 +4,7 @@ from typing import Optional
 import yfinance as yf
 
 from app.models.investment import AssetType, MarketCapCategory
-from app.models.price_history import DataQuality
-from app.schemas.price_history import PriceHistoryPoint
+from app.schemas.price_history import DataQuality, PriceHistoryPoint
 
 
 class YahooFinanceClient:

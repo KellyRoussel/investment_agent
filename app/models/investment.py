@@ -161,14 +161,6 @@ class DBInvestment(BaseModel):
         lazy="select"
     )
     
-    price_history = relationship(
-        "PriceHistory",
-        back_populates="investment",
-        cascade="all, delete-orphan",
-        lazy="select",
-        order_by="PriceHistory.timestamp.desc()"
-    )
-    
     transactions = relationship(
         "InvestmentTransaction",
         back_populates="investment",
