@@ -101,7 +101,12 @@ class CurrencyConverter:
 
         try:
             history = YahooFinanceClient.get_price_history(symbol, start_date, end_date)
-            return {point.timestamp: point.price for point in history if point.price is not None}
+            # Normalize timestamps to midnight to ensure consistent lookups
+            return {
+                datetime.combine(point.timestamp.date(), datetime.min.time()): point.price
+                for point in history
+                if point.price is not None
+            }
         except Exception as e:
             print(f"Error fetching exchange rate history for {from_currency} to {to_currency}: {e}")
             return {}

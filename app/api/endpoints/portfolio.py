@@ -80,15 +80,18 @@ def get_portfolio_price_history(
             end_date,
         )
 
-        # Convert purchase price to user's currency
-        purchase_price_in_user_currency = investment.purchase_price
-        if investment.currency != user_currency:
-            rates = exchange_rate_histories.get(investment.currency, {})
-            purchase_date_time = datetime.combine(investment.purchase_date, datetime.min.time()) if investment.purchase_date else None
-            if purchase_date_time:
-                exchange_rate = rates.get(purchase_date_time)
-                if exchange_rate:
-                    purchase_price_in_user_currency = float(investment.purchase_price) * exchange_rate
+        # Convert purchase price to user's currency using the exchange rate at purchase date
+        purchase_price_in_user_currency = float(investment.purchase_price)
+        if investment.currency != user_currency and investment.purchase_date:
+            # Use get_exchange_rate directly to fetch the rate for purchase_date,
+            # since the exchange_rate_histories only contains rates within the graph date range
+            exchange_rate = CurrencyConverter.get_exchange_rate(
+                investment.currency,
+                user_currency,
+                investment.purchase_date
+            )
+            if exchange_rate:
+                purchase_price_in_user_currency = float(investment.purchase_price) * exchange_rate
 
         for point in history:
             # if point date is 2025-11-27, print value

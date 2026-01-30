@@ -3,11 +3,12 @@ Service pour calculer les métriques de portfolio à la volée.
 """
 from datetime import date
 from decimal import Decimal
-from typing import List
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.clients.yahoo_finance import YahooFinanceClient
 from app.models.investment import DBInvestment as InvestmentModel
 from app.models.portfolio_metrics import *
 from app.services.currency_converter import CurrencyConverter
@@ -16,10 +17,24 @@ from app.services.currency_converter import CurrencyConverter
 
 class PortfolioCalculator:
     """Service pour calculer les métriques de portfolio en temps réel."""
-    
+
     def __init__(self, db: Session):
         self.db = db
-    
+
+    def _fetch_fresh_prices(self, investments: List[InvestmentModel]) -> Dict[str, Optional[Decimal]]:
+        """
+        Fetch fresh prices from Yahoo Finance for all investments.
+
+        Returns:
+            Dict mapping symbol to current price (or None if unavailable)
+        """
+        prices: Dict[str, Optional[Decimal]] = {}
+        for inv in investments:
+            if inv.symbol not in prices:
+                fresh_price = YahooFinanceClient.get_latest_close(inv.symbol)
+                prices[inv.symbol] = Decimal(str(fresh_price)) if fresh_price is not None else None
+        return prices
+
     def calculate_portfolio_metrics(self, user_id: UUID, user_currency: str = "USD") -> PortfolioMetrics:
         """
         Calcule toutes les métriques du portfolio en temps réel.
@@ -41,14 +56,18 @@ class PortfolioCalculator:
         if not investments:
             return self._empty_portfolio_metrics(user_id, user_currency)
 
+        # Fetch fresh prices from Yahoo Finance for consistency with the graph
+        fresh_prices = self._fetch_fresh_prices(investments)
+
         # Calculer les métriques de base avec conversion de devise
         total_value = Decimal(0)
         total_cost = Decimal(0)
 
         for inv in investments:
-            if inv.current_price is not None:
+            current_price = fresh_prices.get(inv.symbol)
+            if current_price is not None:
                 # Convert current value to user's currency
-                current_value_original = inv.current_price * inv.quantity
+                current_value_original = current_price * inv.quantity
                 rate = CurrencyConverter.get_exchange_rate(
                     inv.currency,
                     user_currency,
@@ -82,12 +101,12 @@ class PortfolioCalculator:
             total_gain_loss_percent = 0
 
         # Calculer les répartitions (with currency conversion)
-        breakdown_by_country = self._calculate_country_breakdown(investments, total_value, user_currency)
-        breakdown_by_sector = self._calculate_sector_breakdown(investments, total_value, user_currency)
-        breakdown_by_asset_type = self._calculate_asset_type_breakdown(investments, total_value, user_currency)
+        breakdown_by_country = self._calculate_country_breakdown(investments, total_value, user_currency, fresh_prices)
+        breakdown_by_sector = self._calculate_sector_breakdown(investments, total_value, user_currency, fresh_prices)
+        breakdown_by_asset_type = self._calculate_asset_type_breakdown(investments, total_value, user_currency, fresh_prices)
 
         # Calculer les performeurs (with currency conversion)
-        performers = self._calculate_performers(investments, user_currency)
+        performers = self._calculate_performers(investments, user_currency, fresh_prices)
 
         # Calculer le score de diversification
         diversification_score = self._calculate_diversification_score(
@@ -133,17 +152,19 @@ class PortfolioCalculator:
         investments: List[InvestmentModel],
         total_value: Decimal,
         user_currency: str,
+        fresh_prices: Dict[str, Optional[Decimal]],
     ) -> PortfolioBreakdownMap:
         """Calcule la répartition par pays avec conversion de devise."""
         country_totals = {}
         country_counts = {}
 
         for inv in investments:
-            if inv.current_price is None:
+            current_price = fresh_prices.get(inv.symbol)
+            if current_price is None:
                 continue
 
             country = inv.country
-            value_original = inv.current_price * inv.quantity
+            value_original = current_price * inv.quantity
 
             # Convert to user's currency
             rate = CurrencyConverter.get_exchange_rate(inv.currency, user_currency, date.today())
@@ -172,17 +193,19 @@ class PortfolioCalculator:
         investments: List[InvestmentModel],
         total_value: Decimal,
         user_currency: str,
+        fresh_prices: Dict[str, Optional[Decimal]],
     ) -> PortfolioBreakdownMap:
         """Calcule la répartition par secteur avec conversion de devise."""
         sector_totals = {}
         sector_counts = {}
 
         for inv in investments:
-            if inv.current_price is None or inv.sector is None:
+            current_price = fresh_prices.get(inv.symbol)
+            if current_price is None or inv.sector is None:
                 continue
 
             sector = inv.sector
-            value_original = inv.current_price * inv.quantity
+            value_original = current_price * inv.quantity
 
             # Convert to user's currency
             rate = CurrencyConverter.get_exchange_rate(inv.currency, user_currency, date.today())
@@ -211,17 +234,19 @@ class PortfolioCalculator:
         investments: List[InvestmentModel],
         total_value: Decimal,
         user_currency: str,
+        fresh_prices: Dict[str, Optional[Decimal]],
     ) -> PortfolioBreakdownMap:
         """Calcule la répartition par type d'actif avec conversion de devise."""
         asset_type_totals = {"stock": Decimal(0), "etf": Decimal(0)} # to ensure both types are present
         asset_type_counts = {"stock": Decimal(0), "etf": Decimal(0)}
 
         for inv in investments:
-            if inv.current_price is None:
+            current_price = fresh_prices.get(inv.symbol)
+            if current_price is None:
                 continue
 
             asset_type = inv.asset_type.value
-            value_original = inv.current_price * inv.quantity
+            value_original = current_price * inv.quantity
 
             # Convert to user's currency
             rate = CurrencyConverter.get_exchange_rate(inv.currency, user_currency, date.today())
@@ -249,19 +274,21 @@ class PortfolioCalculator:
         self,
         investments: List[InvestmentModel],
         user_currency: str,
+        fresh_prices: Dict[str, Optional[Decimal]],
     ) -> PortfolioPerformers:
         """Calcule les meilleurs et pires performeurs avec conversion de devise."""
         # Filtrer les investissements avec des données de performance
         investments_with_performance = [
             inv for inv in investments
-            if inv.current_price is not None and inv.current_price > 0
+            if fresh_prices.get(inv.symbol) is not None and fresh_prices.get(inv.symbol) > 0
         ]
 
         # Calculer les performances
         performances: List[PortfolioPerformer] = []
         for inv in investments_with_performance:
+            current_price = fresh_prices.get(inv.symbol)
             cost_original = inv.purchase_price * inv.quantity
-            current_value_original = inv.current_price * inv.quantity
+            current_value_original = current_price * inv.quantity
 
             # Convert to user's currency
             cost_rate = CurrencyConverter.get_exchange_rate(inv.currency, user_currency, inv.purchase_date)
@@ -335,7 +362,12 @@ class PortfolioCalculator:
             user_currency: Target currency for conversion (if None, uses investment's original currency)
         """
         print("Calculating metrics for investment:", investment.id)
-        if investment.current_price is None:
+
+        # Fetch fresh price from Yahoo Finance for consistency
+        fresh_price = YahooFinanceClient.get_latest_close(investment.symbol)
+        current_price = Decimal(str(fresh_price)) if fresh_price is not None else None
+
+        if current_price is None:
             return InvestmentMetrics(
                 current_value=None,
                 gain_loss=None,
@@ -343,7 +375,7 @@ class PortfolioCalculator:
                 performance_status="unknown",
             )
 
-        current_value = investment.current_price * investment.quantity
+        current_value = current_price * investment.quantity
         total_cost = investment.purchase_price * investment.quantity
 
         # Convert to user's currency if specified
