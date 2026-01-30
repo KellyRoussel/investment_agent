@@ -11,7 +11,6 @@ from app.models.base import Base
 from app.models.user import User
 from app.models.investment import DBInvestment
 from app.models.transaction import InvestmentTransaction
-from app.models.portfolio import PortfolioSnapshot
 
 # Import all models to ensure they are registered with SQLAlchemy
 import app.models

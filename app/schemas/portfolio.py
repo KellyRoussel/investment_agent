@@ -75,32 +75,6 @@ class PerformanceAnalysis(BaseSchema):
     monthly_returns: List[Dict[str, float]] = Field(default_factory=list, description="Rendements mensuels")
 
 
-class PortfolioSnapshot(BaseSchema):
-    """Schéma pour un snapshot de portfolio."""
-    
-    id: UUID = Field(..., description="ID du snapshot")
-    user_id: UUID = Field(..., description="ID de l'utilisateur")
-    snapshot_date: str = Field(..., description="Date du snapshot")
-    total_value: str = Field(..., description="Valeur totale")
-    total_cost: str = Field(..., description="Coût total")
-    total_gain_loss: str = Field(..., description="Gain/perte total")
-    total_gain_loss_percent: str = Field(..., description="Gain/perte en pourcentage")
-    diversification_score: Optional[str] = Field(None, description="Score de diversification")
-    risk_score: Optional[str] = Field(None, description="Score de risque")
-    currency: str = Field(..., description="Devise")
-    investment_count: int = Field(..., description="Nombre d'investissements")
-    created_at: datetime = Field(..., description="Date de création")
-
-
-class PortfolioSnapshotList(BaseSchema):
-    """Schéma pour une liste de snapshots de portfolio."""
-    
-    items: List[PortfolioSnapshot] = Field(..., description="Liste des snapshots")
-    total: int = Field(..., description="Nombre total de snapshots")
-    limit: int = Field(..., description="Limite appliquée")
-    offset: int = Field(..., description="Offset appliqué")
-
-
 class PortfolioHistoryPoint(BaseSchema):
     """Schema for a portfolio value history point."""
 
