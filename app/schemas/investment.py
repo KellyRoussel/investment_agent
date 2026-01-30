@@ -144,7 +144,7 @@ class InvestmentQuantityUpdate(BaseSchema):
 # Schemas de réponse
 class InvestmentResponse(IDSchema, TimestampSchema):
     """Schéma de réponse pour un investissement."""
-    
+
     user_id: UUID = Field(..., description="ID de l'utilisateur propriétaire")
     symbol: str = Field(..., description="Symbole de l'investissement")
     name: str = Field(..., description="Nom de l'entreprise/actif")
@@ -157,20 +157,15 @@ class InvestmentResponse(IDSchema, TimestampSchema):
     purchase_price: float = Field(..., description="Prix d'achat unitaire")
     quantity: float = Field(..., description="Quantité détenue")
     currency: str = Field(..., description="Devise")
-    current_price: Optional[float] = Field(None, description="Prix actuel unitaire")
-    current_value: Optional[float] = Field(None, description="Valeur actuelle totale")
-    gain_loss: Optional[float] = Field(None, description="Gain/perte en valeur absolue")
-    gain_loss_percent: Optional[float] = Field(None, description="Gain/perte en pourcentage")
     dividend_yield: Optional[float] = Field(None, description="Rendement de dividende")
     expense_ratio: Optional[float] = Field(None, description="Ratio de frais")
     notes: Optional[str] = Field(None, description="Notes personnelles")
     is_active: bool = Field(..., description="Indique si l'investissement est actif")
-    performance_status: str = Field(..., description="Statut de performance (profitable, losing, neutral)")
 
 
 class InvestmentSummary(BaseSchema):
     """Schéma de résumé pour un investissement."""
-    
+
     id: UUID = Field(..., description="ID de l'investissement")
     symbol: str = Field(..., description="Symbole de l'investissement")
     name: str = Field(..., description="Nom de l'entreprise/actif")
@@ -179,11 +174,6 @@ class InvestmentSummary(BaseSchema):
     sector: Optional[str] = Field(None, description="Secteur d'activité")
     quantity: float = Field(..., description="Quantité détenue")
     purchase_price: str = Field(..., description="Prix d'achat formaté")
-    current_price: Optional[str] = Field(None, description="Prix actuel formaté")
-    current_value: Optional[str] = Field(None, description="Valeur actuelle formatée")
-    gain_loss: Optional[str] = Field(None, description="Gain/perte formaté")
-    gain_loss_percent: Optional[str] = Field(None, description="Gain/perte en pourcentage")
-    performance_status: str = Field(..., description="Statut de performance")
     is_active: bool = Field(..., description="Indique si l'investissement est actif")
 
 

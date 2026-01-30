@@ -122,40 +122,11 @@ class DBInvestment(BaseModel):
         comment="Devise de l'investissement (ISO 4217)"
     )
     
-    # Prix actuel (SEUL prix stocké)
-    current_price = Column(
-        Numeric(15, 4),
-        nullable=True,
-        comment="Prix actuel unitaire"
-    )
-    
-    # Métriques calculées à la volée via propriétés
-    @property
-    def current_value(self):
-        """Calcule la valeur actuelle totale."""
-        if self.current_price is None:
-            return None
-        return self.current_price * self.quantity
-    
     @property
     def total_cost(self):
         """Calcule le coût total d'achat."""
         return self.purchase_price * self.quantity
-    
-    @property
-    def gain_loss(self):
-        """Calcule le gain/perte en valeur absolue."""
-        if self.current_price is None:
-            return None
-        return self.current_value - self.total_cost
-    
-    @property
-    def gain_loss_percent(self):
-        """Calcule le gain/perte en pourcentage."""
-        if self.current_price is None or self.total_cost == 0:
-            return None
-        return (self.gain_loss / self.total_cost) * 100
-    
+
     # Informations supplémentaires
     dividend_yield = Column(
         Numeric(5, 4),
@@ -210,7 +181,6 @@ class DBInvestment(BaseModel):
     __table_args__ = (
         CheckConstraint('quantity > 0', name='chk_positive_quantity'),
         CheckConstraint('purchase_price > 0', name='chk_positive_purchase_price'),
-        CheckConstraint('current_price IS NULL OR current_price > 0', name='chk_positive_current_price'),
         CheckConstraint('purchase_date <= CURRENT_DATE', name='chk_purchase_date_not_future'),
     )
     
@@ -229,7 +199,6 @@ class DBInvestment(BaseModel):
             purchase_price=Money(amount=self.purchase_price, currency=self.currency),
             quantity=self.quantity,
             currency=self.currency,
-            current_price=Money(amount=self.current_price, currency=self.currency),
             sector=self.sector,
             industry=self.industry,
             market_cap_category=self.market_cap_category,

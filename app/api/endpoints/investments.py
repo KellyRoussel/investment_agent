@@ -10,12 +10,10 @@ from app.clients.open_figi import OpenFigiClient
 from app.clients.yahoo_finance import YahooFinanceClient
 from app.database import get_db
 from app.models.api_schema import InvestmentCreateRequest, InvestmentUpdateRequest
-from app.services.portfolio_calculator import PortfolioCalculator
 from app.models.investment import DBInvestment
 from app.repositories import InvestmentRepository
-from app.models.price_history import DataQuality
 from app.schemas import InvestmentResponse
-from app.schemas.price_history import PriceHistoryResponse, PriceHistoryPoint
+from app.schemas.price_history import PriceHistoryResponse
 from app.utils.auth import get_current_user
 from app.models.user import User
 
@@ -29,10 +27,7 @@ def _to_decimal(value: Optional[float]) -> Optional[Decimal]:
 
 def _build_investment_response(
     investment: DBInvestment,
-    calculator: PortfolioCalculator,
-    user_currency: str = None,
 ) -> InvestmentResponse:
-    metrics = calculator.calculate_investment_metrics(investment, user_currency)
     return InvestmentResponse(
         id=investment.id,
         created_at=investment.created_at,
@@ -49,15 +44,10 @@ def _build_investment_response(
         purchase_price=float(investment.purchase_price),
         quantity=float(investment.quantity),
         currency=investment.currency,
-        current_price=float(investment.current_price) if investment.current_price is not None else None,
-        current_value=metrics.current_value,
-        gain_loss=metrics.gain_loss,
-        gain_loss_percent=metrics.gain_loss_percent,
         dividend_yield=float(investment.dividend_yield) if investment.dividend_yield is not None else None,
         expense_ratio=float(investment.expense_ratio) if investment.expense_ratio is not None else None,
         notes=investment.notes,
         is_active=investment.is_active,
-        performance_status=metrics.performance_status,
     )
 
 
@@ -68,7 +58,6 @@ def create_investment(
     db: Session = Depends(get_db),
 ) -> InvestmentResponse:
     investment_repo = InvestmentRepository(db)
-    calculator = PortfolioCalculator(db)
 
     if payload.account_type == "PEA":
         ticker_symbol = payload.ticker_symbol
@@ -99,14 +88,6 @@ def create_investment(
             detail="Unable to fetch purchase price for the provided date.",
         )
 
-    current_price = profile["current_price"] or YahooFinanceClient.get_latest_close(
-        ticker_symbol
-    )
-    if current_price is None:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to fetch current price from Yahoo Finance.",
-        )
     created = investment_repo.create(
         user_id=current_user.id,
         symbol=profile["symbol"],
@@ -117,13 +98,12 @@ def create_investment(
         purchase_price=_to_decimal(purchase_price),
         quantity=Decimal(payload.quantity),
         currency=profile["currency"],
-        current_price=_to_decimal(current_price),
         sector=profile["sector"],
         industry=profile["industry"],
         market_cap_category=profile["market_cap_category"],
     )
 
-    return _build_investment_response(created, calculator, current_user.currency_preference)
+    return _build_investment_response(created)
 
 
 @router.patch("/investments/{investment_id}", response_model=InvestmentResponse)
@@ -134,7 +114,6 @@ def update_investment(
     db: Session = Depends(get_db),
 ) -> InvestmentResponse:
     investment_repo = InvestmentRepository(db)
-    calculator = PortfolioCalculator(db)
 
     investment = investment_repo.get_by_id(investment_id)
     if investment is None:
@@ -151,14 +130,6 @@ def update_investment(
         )
 
     profile = YahooFinanceClient.get_investment_profile(payload.ticker_symbol)
-    current_price = profile["current_price"] or YahooFinanceClient.get_latest_close(
-        payload.ticker_symbol
-    )
-    if current_price is None:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to fetch current price from Yahoo Finance.",
-        )
 
     investment.symbol = profile["symbol"]
     investment.name = profile["name"]
@@ -168,10 +139,9 @@ def update_investment(
     investment.industry = profile["industry"]
     investment.market_cap_category = profile["market_cap_category"]
     investment.currency = profile["currency"]
-    investment.current_price = _to_decimal(current_price)
 
     investment_repo.update(investment)
-    return _build_investment_response(investment, calculator, current_user.currency_preference)
+    return _build_investment_response(investment)
 
 
 @router.get("/users/{user_id}/investments", response_model=list[InvestmentResponse])
@@ -184,7 +154,6 @@ def list_user_investments(
 ) -> list[InvestmentResponse]:
 
     investment_repo = InvestmentRepository(db)
-    calculator = PortfolioCalculator(db)
 
     investments = investment_repo.get_by_user(
         user_id=current_user.id,
@@ -192,7 +161,7 @@ def list_user_investments(
         skip=skip,
         limit=limit,
     )
-    return [_build_investment_response(inv, calculator, current_user.currency_preference) for inv in investments]
+    return [_build_investment_response(inv) for inv in investments]
 
 
 @router.get("/investments/{investment_id}/price-history", response_model=PriceHistoryResponse)

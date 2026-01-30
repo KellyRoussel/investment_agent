@@ -29,11 +29,6 @@ def _db_investment_to_domain(db_investment) -> DomainInvestment:
         sector=db_investment.sector,
         industry=db_investment.industry,
         market_cap_category=db_investment.market_cap_category,
-        current_price=Money(
-            amount=float(db_investment.current_price),
-            currency=db_investment.currency
-        ) if db_investment.current_price else None,
-        current_value=None,
     )
 
     return DomainInvestment(

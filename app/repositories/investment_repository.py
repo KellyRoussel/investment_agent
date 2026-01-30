@@ -28,7 +28,6 @@ class InvestmentRepository:
         purchase_price: Decimal,
         quantity: Decimal,
         currency: str = "USD",
-        current_price: Optional[Decimal] = None,
         sector: Optional[str] = None,
         industry: Optional[str] = None,
         market_cap_category: Optional[MarketCapCategory] = None,
@@ -38,7 +37,7 @@ class InvestmentRepository:
     ) -> DBInvestment:
         """
         Create a new investment.
-        
+
         Args:
             user_id: ID of the user who owns the investment
             symbol: Investment symbol (e.g., AAPL)
@@ -49,14 +48,13 @@ class InvestmentRepository:
             purchase_price: Purchase price per unit
             quantity: Quantity purchased
             currency: Currency code (ISO 4217)
-            current_price: Current price per unit
             sector: Business sector
             industry: Specific industry
             market_cap_category: Market cap category
             dividend_yield: Dividend yield
             expense_ratio: Expense ratio (for ETFs)
             notes: Personal notes
-            
+
         Returns:
             Created Investment instance
         """
@@ -70,7 +68,6 @@ class InvestmentRepository:
             purchase_price=purchase_price,
             quantity=quantity,
             currency=currency,
-            current_price=current_price,
             sector=sector,
             industry=industry,
             market_cap_category=market_cap_category,
@@ -162,28 +159,6 @@ class InvestmentRepository:
             DBInvestment.asset_type == asset_type,
             DBInvestment.is_active == True
         ).all()
-    
-    def update_current_price(
-        self, 
-        investment_id: UUID, 
-        current_price: Decimal
-    ) -> Optional[DBInvestment]:
-        """
-        Update the current price of an investment.
-        
-        Args:
-            investment_id: Investment UUID
-            current_price: New current price
-            
-        Returns:
-            Updated Investment instance or None if not found
-        """
-        investment = self.get_by_id(investment_id)
-        if investment:
-            investment.current_price = current_price
-            self.db.commit()
-            self.db.refresh(investment)
-        return investment
     
     def update(self, investment: DBInvestment) -> DBInvestment:
         """

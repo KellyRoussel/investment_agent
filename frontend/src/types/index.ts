@@ -58,15 +58,10 @@ export interface Investment {
   purchase_price: number;
   quantity: number;
   currency: string;
-  current_price: number | null;
-  current_value: number | null;
-  gain_loss: number | null;
-  gain_loss_percent: number | null;
   dividend_yield: number | null;
   expense_ratio: number | null;
   notes: string | null;
   is_active: boolean;
-  performance_status: 'profitable' | 'losing' | 'neutral';
   created_at: string;
   updated_at: string;
 }
