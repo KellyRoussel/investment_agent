@@ -5,6 +5,7 @@ import {
   SparklesIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@hooks/useAuth';
 
@@ -21,16 +22,42 @@ const navItems: NavItem[] = [
   { name: 'Profile', path: '/profile', icon: UserCircleIcon },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
 
   return (
-    <div className="fixed left-0 top-0 h-screen w-64 bg-[#151932] border-r border-[#1f2544] flex flex-col">
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <div
+        className={`fixed left-0 top-0 h-screen w-64 bg-[#151932] border-r border-[#1f2544] flex flex-col z-50 transform transition-transform duration-300 lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
       {/* Logo/Brand */}
       <div className="p-6 border-b border-[#1f2544]">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-[#22d3ee] to-[#a78bfa] bg-clip-text text-transparent">
-          InvestTrack
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#22d3ee] to-[#a78bfa] bg-clip-text text-transparent">
+            InvestTrack
+          </h1>
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1 rounded text-gray-400 hover:text-white"
+          >
+            <XMarkIcon className="w-6 h-6" />
+          </button>
+        </div>
         {user && (
           <p className="text-sm text-gray-400 mt-2 truncate">{user.email}</p>
         )}
@@ -42,6 +69,7 @@ export function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                 isActive
@@ -72,6 +100,7 @@ export function Sidebar() {
           <span className="font-medium">Logout</span>
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

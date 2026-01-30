@@ -93,36 +93,36 @@ export function Portfolio() {
   );
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 pt-16 lg:pt-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Portfolio Overview</h1>
-        <p className="text-gray-400">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Portfolio Overview</h1>
+        <p className="text-sm sm:text-base text-gray-400">
           Welcome back, {user?.full_name || 'there'}! Here's your investment summary.
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6">
         <PortfolioMetricsCard
           title="Total Value"
           value={formatCurrency(metrics.total_value, metrics.currency)}
           subtitle={`${metrics.investment_count} investments`}
-          icon={<CurrencyDollarIcon className="w-8 h-8" />}
+          icon={<CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8" />}
         />
 
         <PortfolioMetricsCard
           title="Total Cost"
           value={formatCurrency(metrics.total_cost, metrics.currency)}
           subtitle="Total invested"
-          icon={<BanknotesIcon className="w-8 h-8" />}
+          icon={<BanknotesIcon className="w-6 h-6 sm:w-8 sm:h-8" />}
         />
 
         <PortfolioMetricsCard
           title="Total Gain/Loss"
           value={formatCurrency(metrics.total_gain_loss, metrics.currency)}
           subtitle="Overall performance"
-          icon={<ChartBarIcon className="w-8 h-8" />}
+          icon={<ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8" />}
           trend={
             metrics.total_gain_loss > 0 ? 'up' : metrics.total_gain_loss < 0 ? 'down' : 'neutral'
           }
@@ -133,7 +133,7 @@ export function Portfolio() {
           title="Return"
           value={formatPercentage(metrics.total_gain_loss_percent)}
           subtitle="Percentage return"
-          icon={<TrophyIcon className="w-8 h-8" />}
+          icon={<TrophyIcon className="w-6 h-6 sm:w-8 sm:h-8" />}
           trend={
             metrics.total_gain_loss_percent > 0
               ? 'up'
@@ -147,7 +147,7 @@ export function Portfolio() {
           title="Diversification"
           value={metrics.diversification_score.toFixed(1)}
           subtitle="Out of 100"
-          icon={<ScaleIcon className="w-8 h-8" />}
+          icon={<ScaleIcon className="w-6 h-6 sm:w-8 sm:h-8" />}
         />
       </div>
 
@@ -156,8 +156,8 @@ export function Portfolio() {
 
       {/* Breakdown Charts - All Three */}
       <div>
-        <h2 className="text-2xl font-bold text-white mb-4">Portfolio Breakdown</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Portfolio Breakdown</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {assetTypeBreakdownData.length > 0 && (
             <BreakdownChart title="By Asset Type" data={assetTypeBreakdownData} />
           )}
@@ -175,8 +175,8 @@ export function Portfolio() {
       {/* Performers Tables */}
       {(metrics.top_performers.length > 0 || metrics.worst_performers.length > 0) && (
         <div>
-          <h2 className="text-2xl font-bold text-white mb-4">Performance Leaders</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Performance Leaders</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             {metrics.top_performers.length > 0 && (
               <PerformersTable
                 title="Top Performers"

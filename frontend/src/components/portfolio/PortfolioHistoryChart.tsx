@@ -216,10 +216,10 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
 
   return (
     <Card>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-white mb-2">Portfolio Value History</h3>
-          <div className="flex gap-4 text-xs">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-2">Portfolio Value History</h3>
+          <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
             <button
               onClick={() => setShowPortfolioValue(!showPortfolioValue)}
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
@@ -236,12 +236,12 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
             </button>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-1 sm:gap-2">
           {timeRanges.map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
                 timeRange === range
                   ? 'bg-[#22d3ee] text-white shadow-lg shadow-[#22d3ee]/20'
                   : 'bg-[#0a0e27] text-gray-400 hover:text-gray-200 hover:bg-[#252b4a]'

@@ -28,7 +28,7 @@ export function Card({
 
   return (
     <div
-      className={`bg-[#151932] border border-[#1f2544] rounded-xl ${paddingClasses[padding]} ${hoverClasses} ${className}`}
+      className={`bg-[#151932] border border-[#1f2544] rounded-xl overflow-hidden ${paddingClasses[padding]} ${hoverClasses} ${className}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
