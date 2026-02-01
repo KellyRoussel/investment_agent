@@ -90,10 +90,6 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
         normalizedEvents[dateKey] = Array.from(eventsByDate[dateKey]).sort();
       });
 
-      console.log('Investment events:', normalizedEvents);
-      console.log('Chart data points (first 5):', response.data_points.slice(0, 5));
-      console.log('Investments:', investments.slice(0, 3));
-
       setData(response.data_points);
       setInvestmentEvents(normalizedEvents);
     } catch (err: any) {
@@ -119,7 +115,6 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
   };
 
   const investmentGuideDates = Object.keys(investmentEvents).sort();
-  console.log('Investment guide dates to render:', investmentGuideDates);
 
   const InvestmentLabel = (props: any) => {
     const { viewBox } = props;
@@ -303,20 +298,19 @@ export function PortfolioHistoryChart({ currency = 'USD' }: PortfolioHistoryChar
               strokeOpacity={0.5}
             />
           )}
-          {investmentGuideDates.map((dateKey) => {
-            console.log('Rendering ReferenceLine for:', dateKey);
-            return (
-              <ReferenceLine
-                key={dateKey}
-                x={dateKey}
-                stroke="#f59e0b"
-                strokeDasharray="3 3"
-                strokeWidth={2}
-                strokeOpacity={0.8}
-                label={<InvestmentLabel />}
-              />
-            );
-          })}
+          {investmentGuideDates.map((dateKey) => (
+            <ReferenceLine
+              key={dateKey}
+              x={dateKey}
+              yAxisId="left"
+              stroke="#f59e0b"
+              strokeDasharray="3 3"
+              strokeWidth={2}
+              strokeOpacity={0.8}
+              ifOverflow="extendDomain"
+              label={<InvestmentLabel />}
+            />
+          ))}
           {showPortfolioValue && (
             <Area
               yAxisId="left"
