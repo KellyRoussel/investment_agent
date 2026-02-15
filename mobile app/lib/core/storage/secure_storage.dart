@@ -9,6 +9,7 @@ class SecureStorage {
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
   static const _userKey = 'user';
+  static const _profileKey = 'investment_profile';
 
   Future<String?> getAccessToken() => _storage.read(key: _accessTokenKey);
 
@@ -35,6 +36,21 @@ class SecureStorage {
 
   Future<void> setUser(Map<String, dynamic> user) =>
       _storage.write(key: _userKey, value: jsonEncode(user));
+
+  Future<Map<String, dynamic>?> getInvestmentProfile() async {
+    final profileStr = await _storage.read(key: _profileKey);
+    if (profileStr == null) return null;
+    return jsonDecode(profileStr) as Map<String, dynamic>;
+  }
+
+  Future<void> setInvestmentProfile(Map<String, dynamic> profile) =>
+      _storage.write(key: _profileKey, value: jsonEncode(profile));
+
+  Future<void> clearAuthData() => Future.wait([
+    _storage.delete(key: _accessTokenKey),
+    _storage.delete(key: _refreshTokenKey),
+    _storage.delete(key: _userKey),
+  ]);
 
   Future<void> clearAll() => _storage.deleteAll();
 }

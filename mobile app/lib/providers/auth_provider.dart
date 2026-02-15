@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../models/user.dart';
-import '../models/auth.dart';
 import '../services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -25,8 +24,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       final hasToken = await _authService.isAuthenticated();
       if (hasToken) {
-        _user = await _authService.getCurrentUser();
-        _isAuthenticated = true;
+        _user = await _authService.getStoredUser();
+        _isAuthenticated = _user != null;
       }
     } catch (_) {
       _isAuthenticated = false;
@@ -37,46 +36,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> loginWithGoogle() async {
     _error = null;
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _authService.login(LoginRequest(email: email, password: password));
-      _user = await _authService.getCurrentUser();
-      _isAuthenticated = true;
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      _isAuthenticated = false;
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> register({
-    required String email,
-    required String password,
-    required String fullName,
-    String? currencyPreference,
-    String? riskTolerance,
-  }) async {
-    _error = null;
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await _authService.register(RegisterRequest(
-        email: email,
-        password: password,
-        fullName: fullName,
-        currencyPreference: currencyPreference,
-        riskTolerance: riskTolerance,
-      ));
-      _user = await _authService.getCurrentUser();
+      _user = await _authService.initiateGoogleAuth();
       _isAuthenticated = true;
       _error = null;
     } catch (e) {
@@ -95,15 +61,6 @@ class AuthProvider extends ChangeNotifier {
     _isAuthenticated = false;
     _error = null;
     notifyListeners();
-  }
-
-  Future<void> refreshUser() async {
-    try {
-      _user = await _authService.getCurrentUser();
-      notifyListeners();
-    } catch (_) {
-      // Silently fail
-    }
   }
 
   void setUser(User user) {

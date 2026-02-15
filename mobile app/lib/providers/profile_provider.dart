@@ -5,7 +5,7 @@ import '../services/users_service.dart';
 class ProfileProvider extends ChangeNotifier {
   final UsersService _usersService;
 
-  bool _isEditingInfo = false;
+  InvestmentProfile? _profile;
   bool _isEditingPrefs = false;
   bool _isLoading = false;
   String? _error;
@@ -13,23 +13,22 @@ class ProfileProvider extends ChangeNotifier {
 
   ProfileProvider(this._usersService);
 
-  bool get isEditingInfo => _isEditingInfo;
+  InvestmentProfile? get profile => _profile;
   bool get isEditingPrefs => _isEditingPrefs;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get success => _success;
 
-  void startEditingInfo() {
-    _isEditingInfo = true;
-    _error = null;
-    _success = null;
+  Future<void> loadStoredProfile() async {
+    _profile = await _usersService.getStoredProfile();
     notifyListeners();
-  }
-
-  void cancelEditingInfo() {
-    _isEditingInfo = false;
-    _error = null;
-    notifyListeners();
+    try {
+      _profile = await _usersService.fetchProfile();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('=== FETCH PROFILE ERROR: $e ===');
+      // Network unavailable — keep the cached value
+    }
   }
 
   void startEditingPrefs() {
@@ -45,25 +44,21 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<User?> updateProfile(String userId, UserUpdate data) async {
+  Future<void> updatePreferences(InvestmentProfileUpdate data) async {
     _isLoading = true;
     _error = null;
     _success = null;
     notifyListeners();
 
     try {
-      final user = await _usersService.updateUser(userId, data);
-      _isEditingInfo = false;
+      _profile = await _usersService.updateInvestmentProfile(data);
       _isEditingPrefs = false;
-      _success = 'Profile updated successfully';
-      _isLoading = false;
-      notifyListeners();
-      return user;
+      _success = 'Preferences updated successfully';
     } catch (e) {
       _error = e.toString();
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return null;
     }
   }
 

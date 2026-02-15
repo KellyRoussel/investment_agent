@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/portfolio_provider.dart';
+import '../../providers/profile_provider.dart';
 import '../../widgets/charts/portfolio_history_chart.dart';
 import '../../widgets/charts/breakdown_pie_chart.dart';
 import '../../widgets/common/loading_spinner.dart';
@@ -39,7 +40,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final currency = user?.currencyPreference ?? 'USD';
+    final currency = context.watch<ProfileProvider>().profile?.currencyPreference ?? 'USD';
 
     return Consumer<PortfolioProvider>(
       builder: (context, provider, _) {
@@ -67,7 +68,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                 ),
                 if (user != null)
                   Text(
-                    'Welcome back, ${user.fullName}!',
+                    'Welcome back, ${user.name}!',
                     style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                   ),
                 const SizedBox(height: 20),

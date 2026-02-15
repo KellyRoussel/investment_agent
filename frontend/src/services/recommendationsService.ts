@@ -18,7 +18,7 @@ export const recommendationsService = {
 
     const fetchStream = async () => {
       try {
-        const response = await fetch('/api/recommendations/generate', {
+        const response = await fetch('/api/investment/recommendations/generate', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,

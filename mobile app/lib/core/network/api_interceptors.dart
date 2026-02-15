@@ -35,9 +35,9 @@ class TokenRefreshInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    // Don't retry refresh or login requests
+    // Don't retry refresh or exchange requests
     final path = err.requestOptions.path;
-    if (path.contains('/auth/refresh') || path.contains('/auth/login')) {
+    if (path.contains('/auth/refresh-token') || path.contains('/auth/exchange')) {
       return handler.next(err);
     }
 
@@ -55,7 +55,7 @@ class TokenRefreshInterceptor extends Interceptor {
       handler.resolve(response);
       return;
     } catch (_) {
-      await _storage.clearAll();
+      await _storage.clearAuthData();
       _onAuthFailure();
       handler.reject(err);
       return;
@@ -77,13 +77,13 @@ class TokenRefreshInterceptor extends Interceptor {
       }
 
       final response = await Dio(BaseOptions(baseUrl: ApiConstants.baseUrl)).post(
-        ApiConstants.refresh,
-        data: {'refresh_token': refreshToken},
+        ApiConstants.refreshToken,
+        options: Options(headers: {'X-Refresh-Token': refreshToken}),
       );
 
       final accessToken = response.data['access_token'] as String;
-      final newRefreshToken = response.data['refresh_token'] as String;
-      await _storage.setTokens(accessToken, newRefreshToken);
+      // Refresh token remains valid; only store the new access token
+      await _storage.setAccessToken(accessToken);
 
       _refreshCompleter!.complete(accessToken);
       return accessToken;

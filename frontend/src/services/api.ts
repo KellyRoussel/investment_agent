@@ -85,8 +85,9 @@ class APIClient {
         }
 
         const response = await axios.post<{ access_token: string; refresh_token: string }>(
-          '/api/auth/refresh',
-          { refresh_token: refreshToken }
+          '/api/auth/refresh-token',
+          null,
+          { headers: { 'X-Refresh-Token': refreshToken } }
         );
 
         const { access_token, refresh_token } = response.data;

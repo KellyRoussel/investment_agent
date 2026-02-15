@@ -2,42 +2,34 @@
 export interface User {
   id: string;
   email: string;
-  full_name: string;
-  currency_preference: string;
-  risk_tolerance: 'conservative' | 'moderate' | 'aggressive';
-  is_active: boolean;
-  email_verified: boolean;
-  last_login: string | null;
-  created_at: string;
-  updated_at: string;
+  name: string;
+  username: string;
+  picture: string;
+  provider: string;
 }
 
-export interface UserUpdate {
-  email?: string;
-  full_name?: string;
+export interface InvestmentProfile {
+  currency_preference: string;
+  risk_tolerance: 'conservative' | 'moderate' | 'aggressive';
+}
+
+export interface InvestmentProfileUpdate {
   currency_preference?: string;
   risk_tolerance?: 'conservative' | 'moderate' | 'aggressive';
 }
 
 // Auth types
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  full_name: string;
-  currency_preference?: string;
-  risk_tolerance?: 'conservative' | 'moderate' | 'aggressive';
-}
-
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
-  expires_in: number;
+}
+
+export interface OAuthExchangeResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user: User;
 }
 
 // Investment types

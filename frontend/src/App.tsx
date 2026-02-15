@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@components/auth/ProtectedRoute';
 import { Layout } from '@components/layout/Layout';
 import { Login } from '@pages/Login';
 import { Signup } from '@pages/Signup';
+import { AuthCallback } from '@pages/AuthCallback';
 import { Profile } from '@pages/Profile';
 import { Investments } from '@pages/Investments';
 import { Portfolio } from '@pages/Portfolio';
@@ -17,6 +18,7 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/auth/callback/:appName" element={<AuthCallback />} />
 
           {/* Protected routes with layout */}
           <Route element={<ProtectedRoute />}>

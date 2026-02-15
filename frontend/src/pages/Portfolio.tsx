@@ -98,7 +98,7 @@ export function Portfolio() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Portfolio Overview</h1>
         <p className="text-sm sm:text-base text-gray-400">
-          Welcome back, {user?.full_name || 'there'}! Here's your investment summary.
+          Welcome back, {user?.name || 'there'}! Here's your investment summary.
         </p>
       </div>
 

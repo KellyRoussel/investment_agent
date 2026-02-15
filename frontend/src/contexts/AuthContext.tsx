@@ -1,15 +1,14 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '@services/authService';
-import type { User, LoginRequest, RegisterRequest } from '@types/index';
+import type { User } from '@types/index';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  login: (user: User) => void;
+  loginWithGoogle: () => Promise<void>;
   logout: () => void;
-  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,16 +25,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Check for existing session on mount
   useEffect(() => {
-    const initAuth = async () => {
+    const initAuth = () => {
       try {
         if (authService.isAuthenticated()) {
           const storedUser = authService.getStoredUser();
           if (storedUser) {
             setUser(storedUser);
           } else {
-            // Fetch user data if not in storage
-            const currentUser = await authService.getCurrentUser();
-            setUser(currentUser);
+            authService.logout();
           }
         }
       } catch (error) {
@@ -49,26 +46,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initAuth();
   }, []);
 
-  const login = async (data: LoginRequest) => {
-    setIsLoading(true);
-    try {
-      await authService.login(data);
-      const currentUser = authService.getStoredUser();
-      setUser(currentUser);
-    } finally {
-      setIsLoading(false);
-    }
+  const login = (user: User) => {
+    setUser(user);
   };
 
-  const register = async (data: RegisterRequest) => {
-    setIsLoading(true);
-    try {
-      await authService.register(data);
-      const currentUser = authService.getStoredUser();
-      setUser(currentUser);
-    } finally {
-      setIsLoading(false);
-    }
+  const loginWithGoogle = async () => {
+    await authService.loginWithGoogle();
   };
 
   const logout = () => {
@@ -76,24 +59,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   };
 
-  const refreshUser = async () => {
-    try {
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
-      logout();
-    }
-  };
-
   const value: AuthContextType = {
     user,
     isAuthenticated,
     isLoading,
     login,
-    register,
+    loginWithGoogle,
     logout,
-    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

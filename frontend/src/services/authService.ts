@@ -1,41 +1,49 @@
-import { api } from './api';
 import { storage } from '@utils/storage';
-import type { LoginRequest, RegisterRequest, TokenResponse, User } from '@types/index';
+import type { OAuthExchangeResponse, User } from '@types/index';
 
-/**
- * Authentication service for user registration, login, and token management
- */
+const APP_NAME = 'investment_agent';
+const WEB_CALLBACK_REDIRECT_URI = `http://localhost:8000/auth/web-callback/${APP_NAME}`;
+
 export const authService = {
   /**
-   * Register a new user
+   * Get Google OAuth authorization URL and redirect the browser to Google login.
+   * The redirect_uri_override tells myBackend to use the web callback endpoint
+   * instead of the mobile deep link callback.
    */
-  async register(data: RegisterRequest): Promise<TokenResponse> {
-    const response = await api.post<TokenResponse>('/auth/register', data);
-    const tokens = response.data;
-
-    // Store tokens
-    storage.setTokens(tokens.access_token, tokens.refresh_token);
-
-    // Fetch and store user data
-    await this.getCurrentUser();
-
-    return tokens;
+  async loginWithGoogle(): Promise<void> {
+    const params = new URLSearchParams({
+      redirect_uri_override: WEB_CALLBACK_REDIRECT_URI,
+    });
+    const response = await fetch(`/api/login/google/${APP_NAME}?${params}`);
+    if (!response.ok) {
+      throw new Error('Failed to get Google auth URL');
+    }
+    const data = await response.json();
+    window.location.href = data.authorization_url;
   },
 
   /**
-   * Login with email and password
+   * Exchange OAuth code + state for JWT tokens.
+   * Called from the AuthCallback page after Google redirects back.
    */
-  async login(data: LoginRequest): Promise<TokenResponse> {
-    const response = await api.post<TokenResponse>('/auth/login', data);
-    const tokens = response.data;
+  async handleOAuthCallback(code: string, state: string): Promise<User> {
+    const params = new URLSearchParams({
+      code,
+      service: 'GOOGLE',
+      state,
+      redirect_uri_override: WEB_CALLBACK_REDIRECT_URI,
+    });
+    const response = await fetch(`/api/auth/exchange/${APP_NAME}?${params}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Authentication failed' }));
+      throw new Error(error.detail || 'Authentication failed');
+    }
+    const data: OAuthExchangeResponse = await response.json();
 
-    // Store tokens
-    storage.setTokens(tokens.access_token, tokens.refresh_token);
+    storage.setTokens(data.access_token, data.refresh_token);
+    storage.setUser(data.user);
 
-    // Fetch and store user data
-    await this.getCurrentUser();
-
-    return tokens;
+    return data.user;
   },
 
   /**
@@ -43,38 +51,6 @@ export const authService = {
    */
   logout(): void {
     storage.clearAll();
-  },
-
-  /**
-   * Get current authenticated user
-   */
-  async getCurrentUser(): Promise<User> {
-    const response = await api.get<User>('/auth/me');
-    const user = response.data;
-
-    // Store user data
-    storage.setUser(user);
-
-    return user;
-  },
-
-  /**
-   * Refresh access token
-   */
-  async refreshToken(): Promise<TokenResponse> {
-    const refreshToken = storage.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
-    const response = await api.post<TokenResponse>('/auth/refresh', {
-      refresh_token: refreshToken,
-    });
-
-    const tokens = response.data;
-    storage.setTokens(tokens.access_token, tokens.refresh_token);
-
-    return tokens;
   },
 
   /**

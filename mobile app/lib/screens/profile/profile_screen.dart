@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/formatters.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_button.dart';
-import '../../widgets/common/app_input.dart';
 import '../../widgets/common/app_dropdown.dart';
 import '../../widgets/common/error_banner.dart';
 import '../../widgets/common/success_banner.dart';
@@ -21,8 +19,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   String _currency = 'USD';
   String _riskTolerance = 'moderate';
 
@@ -34,45 +30,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ];
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileProvider>().loadStoredProfile();
+    });
   }
 
-  void _initEditFields(User user) {
-    _nameController.text = user.fullName;
-    _emailController.text = user.email;
-    _currency = user.currencyPreference;
-    _riskTolerance = user.riskTolerance;
+  void _initEditFields(InvestmentProfile? profile) {
+    _currency = profile?.currencyPreference ?? 'USD';
+    _riskTolerance = profile?.riskTolerance ?? 'moderate';
   }
 
-  Future<void> _saveInfo(User user) async {
-    final profileProvider = context.read<ProfileProvider>();
-    final updatedUser = await profileProvider.updateProfile(
-      user.id,
-      UserUpdate(
-        fullName: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-      ),
-    );
-    if (updatedUser != null && mounted) {
-      context.read<AuthProvider>().setUser(updatedUser);
-    }
-  }
-
-  Future<void> _savePrefs(User user) async {
-    final profileProvider = context.read<ProfileProvider>();
-    final updatedUser = await profileProvider.updateProfile(
-      user.id,
-      UserUpdate(
+  Future<void> _savePrefs() async {
+    await context.read<ProfileProvider>().updatePreferences(
+      InvestmentProfileUpdate(
         currencyPreference: _currency,
         riskTolerance: _riskTolerance,
       ),
     );
-    if (updatedUser != null && mounted) {
-      context.read<AuthProvider>().setUser(updatedUser);
-    }
   }
 
   @override
@@ -82,6 +58,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Consumer<ProfileProvider>(
       builder: (context, profileProvider, _) {
+        final profile = profileProvider.profile;
+
         return SingleChildScrollView(
           padding: EdgeInsets.only(
             left: 16,
@@ -124,104 +102,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // User Information Card
+              // User Information Card (read-only, from Google)
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'User Information',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                        if (user.picture != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Image.network(
+                              user.picture!,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const _AvatarPlaceholder(),
+                            ),
+                          )
+                        else
+                          const _AvatarPlaceholder(),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                '${user.provider.toLowerCase()} account',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        if (!profileProvider.isEditingInfo)
-                          IconButton(
-                            onPressed: () {
-                              _initEditFields(user);
-                              profileProvider.startEditingInfo();
-                            },
-                            icon: const Icon(Icons.edit, color: AppColors.cyan, size: 20),
-                          ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    if (profileProvider.isEditingInfo) ...[
-                      AppInput(
-                        label: 'Full Name',
-                        controller: _nameController,
-                        textInputAction: TextInputAction.next,
-                      ),
-                      const SizedBox(height: 12),
-                      AppInput(
-                        label: 'Email',
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppButton(
-                              text: 'Cancel',
-                              variant: AppButtonVariant.secondary,
-                              onPressed: () => profileProvider.cancelEditingInfo(),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: AppButton(
-                              text: 'Save',
-                              onPressed: () => _saveInfo(user),
-                              isLoading: profileProvider.isLoading,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ] else ...[
-                      _InfoRow(
-                        icon: Icons.person,
-                        iconColor: AppColors.cyan,
-                        label: 'Full Name',
-                        value: user.fullName,
-                      ),
-                      _InfoRow(
-                        icon: Icons.email,
-                        iconColor: AppColors.purple,
-                        label: 'Email',
-                        value: user.email,
-                        trailing: user.emailVerified
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.success.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'Verified',
-                                  style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w600),
-                                ),
-                              )
-                            : null,
-                      ),
-                      _InfoRow(
-                        icon: Icons.access_time,
-                        iconColor: AppColors.pink,
-                        label: 'Last Login',
-                        value: formatDate(user.lastLogin),
-                      ),
-                      _InfoRow(
-                        icon: Icons.calendar_today,
-                        iconColor: AppColors.success,
-                        label: 'Account Created',
-                        value: formatDate(user.createdAt),
-                      ),
-                    ],
+                    const SizedBox(height: 16),
+                    _InfoRow(
+                      icon: Icons.email,
+                      iconColor: AppColors.purple,
+                      label: 'Email',
+                      value: user.email,
+                    ),
                   ],
                 ),
               ),
@@ -236,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Preferences',
+                          'Investment Preferences',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -246,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (!profileProvider.isEditingPrefs)
                           IconButton(
                             onPressed: () {
-                              _initEditFields(user);
+                              _initEditFields(profile);
                               profileProvider.startEditingPrefs();
                             },
                             icon: const Icon(Icons.edit, color: AppColors.cyan, size: 20),
@@ -286,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Expanded(
                             child: AppButton(
                               text: 'Save',
-                              onPressed: () => _savePrefs(user),
+                              onPressed: _savePrefs,
                               isLoading: profileProvider.isLoading,
                             ),
                           ),
@@ -295,12 +227,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ] else ...[
                       _PrefRow(
                         label: 'Currency',
-                        value: user.currencyPreference,
+                        value: profile?.currencyPreference ?? 'USD',
                       ),
                       const SizedBox(height: 8),
                       _PrefRow(
                         label: 'Risk Tolerance',
-                        value: user.riskTolerance[0].toUpperCase() + user.riskTolerance.substring(1),
+                        value: _capitalize(profile?.riskTolerance ?? 'moderate'),
                       ),
                     ],
                   ],
@@ -327,6 +259,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+}
+
+class _AvatarPlaceholder extends StatelessWidget {
+  const _AvatarPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.cyan.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: const Icon(Icons.person, color: AppColors.cyan, size: 28),
+    );
+  }
 }
 
 class _InfoRow extends StatelessWidget {
@@ -334,20 +286,18 @@ class _InfoRow extends StatelessWidget {
   final Color iconColor;
   final String label;
   final String value;
-  final Widget? trailing;
 
   const _InfoRow({
     required this.icon,
     required this.iconColor,
     required this.label,
     required this.value,
-    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Container(
@@ -367,20 +317,9 @@ class _InfoRow extends StatelessWidget {
                   label,
                   style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
-                Row(
-                  children: [
-                    Text(
-                      value,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    if (trailing != null) ...[
-                      const SizedBox(width: 8),
-                      trailing!,
-                    ],
-                  ],
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                 ),
               ],
             ),

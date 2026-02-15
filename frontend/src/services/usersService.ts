@@ -1,15 +1,22 @@
 import { api } from './api';
-import type { User, UserUpdate } from '@types/index';
+import type { InvestmentProfile, InvestmentProfileUpdate } from '@types/index';
 
-/**
- * User management service
- */
+const INVESTMENT_PROFILE_KEY = 'investment_profile';
+
 export const usersService = {
-  /**
-   * Update user profile
-   */
-  async updateUser(userId: string, data: UserUpdate): Promise<User> {
-    const response = await api.patch<User>(`/users/${userId}`, data);
+  async updateInvestmentProfile(data: InvestmentProfileUpdate): Promise<InvestmentProfile> {
+    const response = await api.patch<InvestmentProfile>('/investment/profile', data);
+    localStorage.setItem(INVESTMENT_PROFILE_KEY, JSON.stringify(response.data));
     return response.data;
+  },
+
+  getStoredInvestmentProfile(): InvestmentProfile | null {
+    const raw = localStorage.getItem(INVESTMENT_PROFILE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as InvestmentProfile;
+    } catch {
+      return null;
+    }
   },
 };

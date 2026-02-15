@@ -1,28 +1,35 @@
 class ApiConstants {
   ApiConstants._();
 
-  static const baseUrl = 'http://192.168.1.42:8000';
+  // Local backend for API calls (investments, portfolio, recommendations, profile)
+  static const baseUrl = 'https://kellyroussel-backend.onrender.com';
 
-  // Auth
-  static const register = '/auth/register';
-  static const login = '/auth/login';
-  static const refresh = '/auth/refresh';
-  static const me = '/auth/me';
+  // Production backend for OAuth (Google requires a valid HTTPS domain as redirect URI)
+  static const oauthBaseUrl = 'https://kellyroussel-backend.onrender.com';
 
-  // Users
-  static String updateUser(String userId) => '/users/$userId';
+  static const appName = 'investtrack';
+
+  // Auth (Google OAuth)
+  static const googleAuthUrl = '/login/google/$appName';
+  static String exchangeCode(String code, String state) =>
+      '/auth/exchange/$appName?code=$code&state=$state&service=GOOGLE';
+  static const refreshToken = '/auth/refresh-token';
 
   // Investments
-  static const investments = '/investments';
-  static String updateInvestment(String id) => '/investments/$id';
-  static String deleteInvestment(String id) => '/investments/$id';
-  static const userInvestments = '/users/me/investments';
-  static String priceHistory(String id) => '/investments/$id/price-history';
+  static const investments = '/investment/investments';
+  static const userInvestments = '/investment/investments';
+  static String updateInvestment(String id) => '/investment/investments/$id';
+  static String deleteInvestment(String id) => '/investment/investments/$id';
+  static String priceHistory(String id) =>
+      '/investment/investments/$id/price-history';
 
   // Portfolio
-  static const portfolioMetrics = '/portfolio/me/metrics';
-  static const portfolioHistory = '/portfolio/me/price-history';
+  static const portfolioMetrics = '/investment/portfolio/metrics';
+  static const portfolioHistory = '/investment/portfolio/price-history';
 
   // Recommendations
-  static const recommendations = '/recommendations/generate';
+  static const recommendations = '/investment/recommendations/generate';
+
+  // Profile
+  static const investmentProfile = '/investment/profile';
 }

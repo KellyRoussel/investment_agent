@@ -37,11 +37,11 @@ void main() async {
   final apiClient = ApiClient(storage);
 
   // Initialize services
-  final authService = AuthService(apiClient, storage);
+  final authService = AuthService(storage);
   final investmentsService = InvestmentsService(apiClient);
   final portfolioService = PortfolioService(apiClient);
   final recommendationsService = RecommendationsService(apiClient.dio, storage);
-  final usersService = UsersService(apiClient);
+  final usersService = UsersService(apiClient, storage);
 
   // Create auth provider and initialize
   final authProvider = AuthProvider(authService);
