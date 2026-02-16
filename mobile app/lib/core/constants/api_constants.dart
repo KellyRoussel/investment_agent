@@ -1,11 +1,13 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ApiConstants {
   ApiConstants._();
 
   // Local backend for API calls (investments, portfolio, recommendations, profile)
-  static const baseUrl = 'https://kellyroussel-backend.onrender.com';
+  static String get baseUrl => dotenv.env['BASE_URL']!;
 
   // Production backend for OAuth (Google requires a valid HTTPS domain as redirect URI)
-  static const oauthBaseUrl = 'https://kellyroussel-backend.onrender.com';
+  static String get oauthBaseUrl => dotenv.env['OAUTH_BASE_URL']!;
 
   static const appName = 'investtrack';
 
