@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/profile_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/error_banner.dart';
 
@@ -25,7 +26,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await context.read<AuthProvider>().loginWithGoogle();
-      if (mounted) context.go('/portfolio');
+      if (mounted) {
+        context.read<ProfileProvider>().loadStoredProfile();
+        context.go('/portfolio');
+      }
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {

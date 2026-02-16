@@ -37,6 +37,10 @@ dependencies:
   # Environment variables
   flutter_dotenv: ^5.2.1
 
+  # App icon & splash
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

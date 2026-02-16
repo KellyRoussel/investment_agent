@@ -54,6 +54,12 @@ void main() async {
   // Initialize auth state (check stored tokens)
   await authProvider.initAuth();
 
+  // Pre-load investment profile so currency preference is available immediately
+  final profileProvider = ProfileProvider(usersService);
+  if (authProvider.isAuthenticated) {
+    profileProvider.loadStoredProfile();
+  }
+
   runApp(
     MultiProvider(
       providers: [
@@ -61,7 +67,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PortfolioProvider(portfolioService)),
         ChangeNotifierProvider(create: (_) => InvestmentsProvider(investmentsService)),
         ChangeNotifierProvider(create: (_) => RecommendationsProvider(recommendationsService)),
-        ChangeNotifierProvider(create: (_) => ProfileProvider(usersService)),
+        ChangeNotifierProvider.value(value: profileProvider),
         // Provide services directly for widgets that need them
         Provider.value(value: investmentsService),
       ],
