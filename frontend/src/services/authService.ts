@@ -2,7 +2,8 @@ import { storage } from '@utils/storage';
 import type { OAuthExchangeResponse, User } from '@types/index';
 
 const APP_NAME = 'investment_agent';
-const WEB_CALLBACK_REDIRECT_URI = `http://localhost:8000/auth/web-callback/${APP_NAME}`;
+const API_URL = import.meta.env.VITE_API_URL || '';
+const WEB_CALLBACK_REDIRECT_URI = `${API_URL}/auth/web-callback/${APP_NAME}`;
 
 export const authService = {
   /**
@@ -14,7 +15,7 @@ export const authService = {
     const params = new URLSearchParams({
       redirect_uri_override: WEB_CALLBACK_REDIRECT_URI,
     });
-    const response = await fetch(`/api/login/google/${APP_NAME}?${params}`);
+    const response = await fetch(`${API_URL}/login/google/${APP_NAME}?${params}`);
     if (!response.ok) {
       throw new Error('Failed to get Google auth URL');
     }
@@ -33,7 +34,7 @@ export const authService = {
       state,
       redirect_uri_override: WEB_CALLBACK_REDIRECT_URI,
     });
-    const response = await fetch(`/api/auth/exchange/${APP_NAME}?${params}`);
+    const response = await fetch(`${API_URL}/auth/exchange/${APP_NAME}?${params}`);
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Authentication failed' }));
       throw new Error(error.detail || 'Authentication failed');

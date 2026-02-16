@@ -120,12 +120,6 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                         showTrend: true,
                         trendValue: provider.metrics!.totalGainLossPercent,
                       ),
-                      PortfolioMetricsCard(
-                        title: 'Diversification',
-                        value: provider.metrics!.diversificationScore.toStringAsFixed(1),
-                        icon: Icons.donut_small,
-                        subtitle: 'out of 10',
-                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -134,24 +128,38 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                   PortfolioHistoryChart(currency: currency),
                   const SizedBox(height: 20),
 
-                  // Breakdown charts
+                  // Breakdown section - 2 cards per row grid
                   const SectionHeader(title: 'Portfolio Breakdown', icon: Icons.donut_large),
-                  BreakdownPieChart(
-                    title: 'By Asset Type',
-                    data: provider.metrics!.breakdownByAssetType,
-                    currency: currency,
-                  ),
-                  const SizedBox(height: 16),
-                  BreakdownPieChart(
-                    title: 'By Country',
-                    data: provider.metrics!.breakdownByCountry,
-                    currency: currency,
-                  ),
-                  const SizedBox(height: 16),
-                  BreakdownPieChart(
-                    title: 'By Sector',
-                    data: provider.metrics!.breakdownBySector,
-                    currency: currency,
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.85,
+                    children: [
+                      PortfolioMetricsCard(
+                        title: 'Diversification',
+                        value: provider.metrics!.diversificationScore.toStringAsFixed(1),
+                        icon: Icons.donut_small,
+                        subtitle: 'out of 10',
+                      ),
+                      BreakdownPieChart(
+                        title: 'By Asset Type',
+                        data: provider.metrics!.breakdownByAssetType,
+                        currency: currency,
+                      ),
+                      BreakdownPieChart(
+                        title: 'By Country',
+                        data: provider.metrics!.breakdownByCountry,
+                        currency: currency,
+                      ),
+                      BreakdownPieChart(
+                        title: 'By Sector',
+                        data: provider.metrics!.breakdownBySector,
+                        currency: currency,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
 

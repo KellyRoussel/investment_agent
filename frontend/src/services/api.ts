@@ -13,7 +13,7 @@ class APIClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: '/api',
+      baseURL: import.meta.env.VITE_API_URL || '/api',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -85,7 +85,7 @@ class APIClient {
         }
 
         const response = await axios.post<{ access_token: string; refresh_token: string }>(
-          '/api/auth/refresh-token',
+          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh-token`,
           null,
           { headers: { 'X-Refresh-Token': refreshToken } }
         );
