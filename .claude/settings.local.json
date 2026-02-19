@@ -6,7 +6,8 @@
       "Bash(python -m py_compile:*)",
       "Bash(.venvScriptsactivate)",
       "Skill(playwright-cli)",
-      "Skill(playwright-cli:*)"
+      "Skill(playwright-cli:*)",
+      "Bash(dir:*)"
     ]
   }
 }
