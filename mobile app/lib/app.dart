@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'navigation/app_router.dart';
 import 'providers/auth_provider.dart';
+import 'providers/warmup_provider.dart';
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -19,7 +20,8 @@ class _AppState extends State<App> {
   void initState() {
     super.initState();
     final authProvider = context.read<AuthProvider>();
-    _router = AppRouter.create(authProvider);
+    final warmupProvider = context.read<WarmupProvider>();
+    _router = AppRouter.create(authProvider, warmupProvider);
   }
 
   @override

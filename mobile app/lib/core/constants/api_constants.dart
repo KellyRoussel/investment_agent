@@ -11,6 +11,9 @@ class ApiConstants {
 
   static const appName = 'investtrack';
 
+  // Health
+  static const health = '/health';
+
   // Auth (Google OAuth)
   static const googleAuthUrl = '/login/google/$appName';
   static String exchangeCode(String code, String state) =>

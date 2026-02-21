@@ -12,6 +12,12 @@ from app.api.endpoints.users import router as users_router
 
 app = FastAPI(title="Investment Agent API")
 
+
+@app.get("/health", tags=["Health"])
+async def health():
+    return {"status": "ok"}
+
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,

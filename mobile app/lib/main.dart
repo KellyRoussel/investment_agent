@@ -11,11 +11,13 @@ import 'services/investments_service.dart';
 import 'services/portfolio_service.dart';
 import 'services/recommendations_service.dart';
 import 'services/users_service.dart';
+import 'core/constants/api_constants.dart';
 import 'providers/auth_provider.dart';
 import 'providers/portfolio_provider.dart';
 import 'providers/investments_provider.dart';
 import 'providers/recommendations_provider.dart';
 import 'providers/profile_provider.dart';
+import 'providers/warmup_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +47,10 @@ void main() async {
   final recommendationsService = RecommendationsService(apiClient.dio, storage);
   final usersService = UsersService(apiClient, storage);
 
+  // Create warmup provider and start polling
+  final warmupProvider = WarmupProvider(ApiConstants.baseUrl);
+  warmupProvider.start();
+
   // Create auth provider and initialize
   final authProvider = AuthProvider(authService);
 
@@ -54,15 +60,18 @@ void main() async {
   // Initialize auth state (check stored tokens)
   await authProvider.initAuth();
 
-  // Pre-load investment profile so currency preference is available immediately
+  // Pre-load investment profile once backend is confirmed ready
   final profileProvider = ProfileProvider(usersService);
-  if (authProvider.isAuthenticated) {
-    profileProvider.loadStoredProfile();
-  }
+  warmupProvider.addListener(() {
+    if (warmupProvider.isBackendReady && authProvider.isAuthenticated) {
+      profileProvider.loadStoredProfile();
+    }
+  });
 
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: warmupProvider),
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => PortfolioProvider(portfolioService)),
         ChangeNotifierProvider(create: (_) => InvestmentsProvider(investmentsService)),
