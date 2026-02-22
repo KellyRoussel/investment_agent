@@ -189,6 +189,22 @@ export interface InvestmentInitialValues {
   alert_threshold_pct?: number | null;
 }
 
+// Report history types
+export interface InvestmentReport {
+  id: string;
+  user_id: string;
+  report_date: string;
+  final_recommendation: string | null;
+  status: 'in_progress' | 'completed' | 'failed';
+  created_at: string;
+  completed_at: string | null;
+  tokens_input: number | null;
+  tokens_cached: number | null;
+  tokens_output: number | null;
+  cost_usd: number | null;
+  model_used: string | null;
+}
+
 // AI Agent Streaming Event types (v2 — DeepAgents workflow)
 export type AgentEventType = 'workflow_start' | 'step_start' | 'step_complete' | 'tool_call' | 'token' | 'final_report' | 'workflow_complete' | 'investment_suggestions' | 'error';
 
@@ -227,6 +243,11 @@ export interface WorkflowCompleteEvent {
   type: 'workflow_complete';
   report_id: string;
   message: string;
+  tokens_input: number;
+  tokens_cached: number;
+  tokens_output: number;
+  cost_usd: number;
+  model: string;
 }
 
 export interface FinalReportEvent {
@@ -254,3 +275,25 @@ export type AgentStreamEvent =
   | WorkflowCompleteEvent
   | InvestmentSuggestionsEvent
   | ErrorEvent;
+
+export interface WatchlistItem {
+  id: string;
+  symbol: string | null;
+  name: string;
+  sector: string | null;
+  country: string | null;
+  reason: string | null;
+  source: string | null;
+  priority: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WatchlistItemCreate {
+  name: string;
+  symbol?: string;
+  sector?: string;
+  country?: string;
+  reason?: string;
+  priority?: 'high' | 'normal' | 'low';
+}

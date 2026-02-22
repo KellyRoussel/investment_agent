@@ -14,6 +14,8 @@ sealed class AgentStreamEvent {
         return MessageEvent.fromJson(json);
       case 'final_output':
         return FinalOutputEvent.fromJson(json);
+      case 'workflow_complete':
+        return WorkflowCompleteEvent.fromJson(json);
       case 'error':
         return ErrorEvent.fromJson(json);
       default:
@@ -102,6 +104,55 @@ class ErrorEvent implements AgentStreamEvent {
   factory ErrorEvent.fromJson(Map<String, dynamic> json) {
     return ErrorEvent(message: json['message'] as String);
   }
+}
+
+class WorkflowCompleteEvent implements AgentStreamEvent {
+  final String reportId;
+  final int tokensInput;
+  final int tokensCached;
+  final int tokensOutput;
+  final double costUsd;
+  final String model;
+
+  WorkflowCompleteEvent({
+    required this.reportId,
+    required this.tokensInput,
+    required this.tokensCached,
+    required this.tokensOutput,
+    required this.costUsd,
+    required this.model,
+  });
+
+  factory WorkflowCompleteEvent.fromJson(Map<String, dynamic> json) {
+    return WorkflowCompleteEvent(
+      reportId: json['report_id'] as String? ?? '',
+      tokensInput: json['tokens_input'] as int? ?? 0,
+      tokensCached: json['tokens_cached'] as int? ?? 0,
+      tokensOutput: json['tokens_output'] as int? ?? 0,
+      costUsd: (json['cost_usd'] as num?)?.toDouble() ?? 0.0,
+      model: json['model'] as String? ?? '',
+    );
+  }
+}
+
+class WorkflowCost {
+  final int tokensInput;
+  final int tokensCached;
+  final int tokensOutput;
+  final double costUsd;
+  final String model;
+
+  const WorkflowCost({
+    required this.tokensInput,
+    required this.tokensCached,
+    required this.tokensOutput,
+    required this.costUsd,
+    required this.model,
+  });
+
+  int get totalTokens => tokensInput + tokensOutput;
+  int get freshInputTokens => tokensInput - tokensCached;
+  bool get hasCachedTokens => tokensCached > 0;
 }
 
 enum WorkflowStepStatus { pending, inProgress, completed }

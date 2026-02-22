@@ -6,7 +6,7 @@ import { Card } from '@components/common/Card';
 import { Button } from '@components/common/Button';
 import { AddInvestmentModal } from '@components/investment/AddInvestmentModal';
 import { recommendationsService } from '@services/recommendationsService';
-import type { AgentStreamEvent, StepStartEvent, StepCompleteEvent, ToolCallEvent, FinalReportEvent, InvestmentSuggestion, InvestmentInitialValues, InvestmentSuggestionsEvent } from '@types/index';
+import type { AgentStreamEvent, StepStartEvent, StepCompleteEvent, ToolCallEvent, FinalReportEvent, InvestmentSuggestion, InvestmentInitialValues, InvestmentSuggestionsEvent, WorkflowCompleteEvent } from '@types/index';
 
 interface ToolCall {
   id: number;
@@ -38,6 +38,7 @@ export function Recommendations() {
   const [activityExpanded, setActivityExpanded] = useState(true);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [suggestions, setSuggestions] = useState<InvestmentSuggestion[]>([]);
+  const [workflowCost, setWorkflowCost] = useState<Pick<WorkflowCompleteEvent, 'tokens_input' | 'tokens_cached' | 'tokens_output' | 'cost_usd' | 'model'> | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addModalInitialValues, setAddModalInitialValues] = useState<InvestmentInitialValues | undefined>(undefined);
   const toolCallIdRef = useRef(0);
@@ -72,6 +73,7 @@ export function Recommendations() {
     setError(null);
     setRecommendation(null);
     setSuggestions([]);
+    setWorkflowCost(null);
     setWorkflowSteps(WORKFLOW_STEPS.map(s => ({ ...s, status: 'pending', toolCalls: [] })));
     setExpandedSteps(new Set());
     setActivityExpanded(true);
@@ -134,9 +136,17 @@ export function Recommendations() {
       }
 
       if (event.type === 'workflow_complete') {
+        const completionEvent = event as WorkflowCompleteEvent;
         setWorkflowSteps(prev => prev.map(s =>
           s.step === 4 ? { ...s, status: 'completed' as const } : s
         ));
+        setWorkflowCost({
+          tokens_input: completionEvent.tokens_input,
+          tokens_cached: completionEvent.tokens_cached,
+          tokens_output: completionEvent.tokens_output,
+          cost_usd: completionEvent.cost_usd,
+          model: completionEvent.model,
+        });
         setLoading(false);
       } else if (event.type === 'error') {
         setError(event.message);
@@ -417,6 +427,28 @@ export function Recommendations() {
             )}
           </div>
         </Card>
+      )}
+
+      {/* Workflow cost banner */}
+      {workflowCost && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-[#1f2544] bg-[#151932] text-sm">
+          <span className="text-gray-500">Workflow cost</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#a78bfa]/10 text-[#a78bfa] border border-[#a78bfa]/30">
+              {((workflowCost.tokens_input + workflowCost.tokens_output) / 1000).toFixed(1)}k tokens
+            </span>
+            {workflowCost.tokens_cached > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/30">
+                {(workflowCost.tokens_cached / 1000).toFixed(1)}k cached
+              </span>
+            )}
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#22d3ee]/10 text-[#22d3ee] border border-[#22d3ee]/30">
+              {workflowCost.cost_usd < 0.01
+                ? `$${workflowCost.cost_usd.toFixed(4)}`
+                : `$${workflowCost.cost_usd.toFixed(3)}`}
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Recommendation Result Card */}

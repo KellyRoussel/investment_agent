@@ -33,7 +33,7 @@ class ApiConstants {
   static const portfolioHistory = '/investment/portfolio/price-history';
 
   // Recommendations
-  static const recommendations = '/investment/recommendations/generate';
+  static const recommendations = '/investment/recommendations/generate/v2';
 
   // Profile
   static const investmentProfile = '/investment/profile';

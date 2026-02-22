@@ -11,11 +11,12 @@ class RecommendationsService {
 
   RecommendationsService(this._dio, this._storage);
 
-  Stream<AgentStreamEvent> streamRecommendation(CancelToken cancelToken) async* {
+  Stream<AgentStreamEvent> streamRecommendation(CancelToken cancelToken, {required double budgetEur}) async* {
     final token = await _storage.getAccessToken();
 
     final response = await _dio.get<ResponseBody>(
       ApiConstants.recommendations,
+      queryParameters: {'budget_eur': budgetEur},
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',

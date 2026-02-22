@@ -188,6 +188,14 @@ export function Investments() {
                             </p>
                           </div>
                         )}
+                        {selectedInvestment.investment_thesis && (
+                          <div className="col-span-2 pt-3 mt-1 border-t border-[#1f2544]">
+                            <p className="text-sm text-gray-400 mb-1">Investment Thesis</p>
+                            <p className="text-sm text-gray-200 leading-relaxed">
+                              {selectedInvestment.investment_thesis}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}

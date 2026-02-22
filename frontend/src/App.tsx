@@ -9,6 +9,8 @@ import { Profile } from '@pages/Profile';
 import { Investments } from '@pages/Investments';
 import { Portfolio } from '@pages/Portfolio';
 import { Recommendations } from '@pages/Recommendations';
+import { ReportHistory } from '@pages/ReportHistory';
+import { Watchlist } from '@pages/Watchlist';
 
 function App() {
   return (
@@ -25,7 +27,9 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/investments" element={<Investments />} />
+              <Route path="/watchlist" element={<Watchlist />} />
               <Route path="/recommendations" element={<Recommendations />} />
+              <Route path="/reports" element={<ReportHistory />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/" element={<Navigate to="/portfolio" replace />} />
             </Route>

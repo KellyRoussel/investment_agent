@@ -17,6 +17,7 @@ class RecommendationsProvider extends ChangeNotifier {
   int? _currentStep;
   CancelToken? _cancelToken;
   StreamSubscription? _subscription;
+  WorkflowCost? _workflowCost;
 
   RecommendationsProvider(this._service);
 
@@ -27,6 +28,7 @@ class RecommendationsProvider extends ChangeNotifier {
   bool get activityExpanded => _activityExpanded;
   Set<int> get expandedSteps => _expandedSteps;
   int get completedSteps => _workflowSteps.where((s) => s.status == WorkflowStepStatus.completed).length;
+  WorkflowCost? get workflowCost => _workflowCost;
 
   static const _stepNames = [
     'Market Discovery',
@@ -36,10 +38,11 @@ class RecommendationsProvider extends ChangeNotifier {
     'Generating Recommendations',
   ];
 
-  Future<void> generateRecommendation() async {
+  Future<void> generateRecommendation({required double budgetEur}) async {
     _isLoading = true;
     _error = null;
     _recommendation = null;
+    _workflowCost = null;
     _toolCallIdCounter = 0;
     _currentStep = null;
     _expandedSteps.clear();
@@ -54,7 +57,7 @@ class RecommendationsProvider extends ChangeNotifier {
     _cancelToken = CancelToken();
 
     try {
-      final stream = _service.streamRecommendation(_cancelToken!);
+      final stream = _service.streamRecommendation(_cancelToken!, budgetEur: budgetEur);
       await for (final event in stream) {
         _handleEvent(event);
       }
@@ -116,6 +119,15 @@ class RecommendationsProvider extends ChangeNotifier {
       case ErrorEvent(:final message):
         _error = message;
         _isLoading = false;
+
+      case WorkflowCompleteEvent(:final tokensInput, :final tokensCached, :final tokensOutput, :final costUsd, :final model):
+        _workflowCost = WorkflowCost(
+          tokensInput: tokensInput,
+          tokensCached: tokensCached,
+          tokensOutput: tokensOutput,
+          costUsd: costUsd,
+          model: model,
+        );
 
       case ToolOutputEvent():
       case MessageEvent():

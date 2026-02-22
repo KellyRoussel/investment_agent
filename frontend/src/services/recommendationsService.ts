@@ -1,5 +1,6 @@
 import { storage } from '@utils/storage';
-import type { AgentStreamEvent } from '@types/index';
+import type { AgentStreamEvent, InvestmentReport } from '@types/index';
+import { api } from './api';
 
 /**
  * Recommendations service for AI-powered investment recommendations with SSE streaming
@@ -76,5 +77,10 @@ export const recommendationsService = {
     fetchStream();
 
     return () => abortController.abort();
+  },
+
+  async fetchHistory(): Promise<InvestmentReport[]> {
+    const response = await api.get<InvestmentReport[]>('/investment/recommendations/history');
+    return response.data;
   },
 };

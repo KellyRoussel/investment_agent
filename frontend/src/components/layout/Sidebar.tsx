@@ -6,6 +6,8 @@ import {
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
   XMarkIcon,
+  ClockIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@hooks/useAuth';
 
@@ -18,7 +20,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Portfolio', path: '/portfolio', icon: ChartBarIcon },
   { name: 'Investments', path: '/investments', icon: BriefcaseIcon },
+  { name: 'Watchlist', path: '/watchlist', icon: EyeIcon },
   { name: 'Recommendations', path: '/recommendations', icon: SparklesIcon },
+  { name: 'Reports', path: '/reports', icon: ClockIcon },
   { name: 'Profile', path: '/profile', icon: UserCircleIcon },
 ];
 
