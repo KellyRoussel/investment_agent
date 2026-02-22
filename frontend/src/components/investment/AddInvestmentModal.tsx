@@ -1,18 +1,19 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@components/common/Button';
 import { Input } from '@components/common/Input';
 import { investmentsService } from '@services/investmentsService';
-import type { InvestmentCreate } from '@types/index';
+import type { InvestmentCreate, InvestmentInitialValues } from '@types/index';
 
 interface AddInvestmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialValues?: InvestmentInitialValues;
 }
 
 const investmentSchema = z
@@ -20,9 +21,7 @@ const investmentSchema = z
     account_type: z.enum(['CTO', 'PEA']),
     ticker_symbol: z.preprocess(
       (val) => {
-        if (typeof val !== 'string') {
-          return val;
-        }
+        if (typeof val !== 'string') return val;
         const trimmed = val.trim();
         return trimmed ? trimmed.toUpperCase() : undefined;
       },
@@ -30,9 +29,7 @@ const investmentSchema = z
     ),
     isin: z.preprocess(
       (val) => {
-        if (typeof val !== 'string') {
-          return val;
-        }
+        if (typeof val !== 'string') return val;
         const trimmed = val.trim();
         return trimmed ? trimmed.toUpperCase() : undefined;
       },
@@ -47,6 +44,27 @@ const investmentSchema = z
       .number({ invalid_type_error: 'Quantity must be a number' })
       .positive('Quantity must be positive')
       .min(0.00001, 'Quantity must be greater than 0'),
+    // Optional fields
+    notes: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().optional()
+    ),
+    investment_thesis: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().optional()
+    ),
+    thesis_status: z.preprocess(
+      (val) => (val === '' ? undefined : val),
+      z.enum(['valid', 'watch', 'reconsider']).optional()
+    ),
+    alert_threshold_pct: z.preprocess(
+      (val) => {
+        if (val === '' || val === undefined || val === null) return undefined;
+        const n = Number(val);
+        return isNaN(n) ? undefined : n;
+      },
+      z.number().optional()
+    ),
   })
   .superRefine((data, ctx) => {
     if (data.account_type === 'PEA' && !data.ticker_symbol) {
@@ -67,9 +85,10 @@ const investmentSchema = z
 
 type InvestmentFormData = z.infer<typeof investmentSchema>;
 
-export function AddInvestmentModal({ isOpen, onClose, onSuccess }: AddInvestmentModalProps) {
+export function AddInvestmentModal({ isOpen, onClose, onSuccess, initialValues }: AddInvestmentModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showOptional, setShowOptional] = useState(false);
 
   const {
     register,
@@ -86,9 +105,49 @@ export function AddInvestmentModal({ isOpen, onClose, onSuccess }: AddInvestment
   });
   const accountType = watch('account_type');
 
+  // Pre-fill form whenever the modal opens (with or without initial values)
+  useEffect(() => {
+    if (!isOpen) return;
+    const today = new Date().toISOString().split('T')[0];
+    const defaults: Partial<InvestmentFormData> = {
+      account_type: initialValues?.account_type ?? 'PEA',
+      purchase_date: today,
+    };
+    if (initialValues?.ticker_symbol) {
+      if (initialValues.account_type !== 'CTO') {
+        defaults.ticker_symbol = initialValues.ticker_symbol;
+      }
+      // For CTO accounts the agent provides a ticker but the form needs an ISIN.
+      // We still set notes below — the ticker will appear there as a reference.
+    }
+    if (initialValues?.suggested_quantity != null) {
+      defaults.quantity = initialValues.suggested_quantity;
+    }
+    if (initialValues?.investment_thesis) {
+      defaults.investment_thesis = initialValues.investment_thesis;
+    }
+    // Build notes: combine agent notes with CTO ticker reference if needed
+    const agentNotes = initialValues?.notes ?? '';
+    const ctoPart =
+      initialValues?.account_type === 'CTO' && initialValues?.ticker_symbol
+        ? `Ticker de référence : ${initialValues.ticker_symbol}.`
+        : '';
+    const combinedNotes = [ctoPart, agentNotes].filter(Boolean).join('\n').trim();
+    if (combinedNotes) {
+      defaults.notes = combinedNotes;
+    }
+    if (initialValues?.alert_threshold_pct != null) {
+      defaults.alert_threshold_pct = initialValues.alert_threshold_pct;
+    }
+    reset(defaults);
+    setShowOptional(!!(initialValues?.investment_thesis || combinedNotes || initialValues?.alert_threshold_pct != null));
+    setError(null);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleClose = () => {
     reset();
     setError(null);
+    setShowOptional(false);
     onClose();
   };
 
@@ -104,6 +163,10 @@ export function AddInvestmentModal({ isOpen, onClose, onSuccess }: AddInvestment
         ...(data.account_type === 'PEA'
           ? { ticker_symbol: data.ticker_symbol }
           : { isin: data.isin }),
+        ...(data.notes && { notes: data.notes }),
+        ...(data.investment_thesis && { investment_thesis: data.investment_thesis }),
+        ...(data.thesis_status && { thesis_status: data.thesis_status }),
+        ...(data.alert_threshold_pct !== undefined && { alert_threshold_pct: data.alert_threshold_pct }),
       };
 
       await investmentsService.createInvestment(createData);
@@ -119,8 +182,15 @@ export function AddInvestmentModal({ isOpen, onClose, onSuccess }: AddInvestment
       setIsSubmitting(false);
     }
   };
+
   const onInvalid = () => {
     setError('Please fix the highlighted fields and try again.');
+  };
+
+  const thesisStatusColors: Record<string, string> = {
+    valid: 'text-[#10b981]',
+    watch: 'text-[#f59e0b]',
+    reconsider: 'text-[#ef4444]',
   };
 
   return (
@@ -173,6 +243,7 @@ export function AddInvestmentModal({ isOpen, onClose, onSuccess }: AddInvestment
                     </div>
                   )}
 
+                  {/* Account Type */}
                   <div className="w-full">
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Account Type<span className="text-[#ef4444] ml-1">*</span>
@@ -186,12 +257,11 @@ export function AddInvestmentModal({ isOpen, onClose, onSuccess }: AddInvestment
                       <option value="CTO">CTO</option>
                     </select>
                     {errors.account_type?.message && (
-                      <p className="mt-1.5 text-sm text-[#ef4444]">
-                        {errors.account_type.message}
-                      </p>
+                      <p className="mt-1.5 text-sm text-[#ef4444]">{errors.account_type.message}</p>
                     )}
                   </div>
 
+                  {/* Ticker / ISIN */}
                   {accountType === 'PEA' ? (
                     <Input
                       {...register('ticker_symbol')}
@@ -234,6 +304,85 @@ export function AddInvestmentModal({ isOpen, onClose, onSuccess }: AddInvestment
                     disabled={isSubmitting}
                     required
                   />
+
+                  {/* Optional fields toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setShowOptional(v => !v)}
+                    className="w-full flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors py-1"
+                  >
+                    {showOptional ? (
+                      <ChevronDownIcon className="w-4 h-4" />
+                    ) : (
+                      <ChevronRightIcon className="w-4 h-4" />
+                    )}
+                    Optional details
+                  </button>
+
+                  {showOptional && (
+                    <div className="space-y-4 border-l-2 border-[#1f2544] pl-4">
+                      {/* Notes */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Notes</label>
+                        <textarea
+                          {...register('notes')}
+                          disabled={isSubmitting}
+                          rows={2}
+                          placeholder="Any personal notes about this investment…"
+                          className="w-full px-4 py-2 bg-[#0a0e27] border border-[#1f2544] rounded-lg text-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#22d3ee] focus:ring-offset-2 focus:ring-offset-[#151932] disabled:opacity-50 placeholder:text-gray-600"
+                        />
+                      </div>
+
+                      {/* Investment Thesis */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Investment Thesis
+                        </label>
+                        <textarea
+                          {...register('investment_thesis')}
+                          disabled={isSubmitting}
+                          rows={3}
+                          placeholder="Why are you investing in this asset?"
+                          className="w-full px-4 py-2 bg-[#0a0e27] border border-[#1f2544] rounded-lg text-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#22d3ee] focus:ring-offset-2 focus:ring-offset-[#151932] disabled:opacity-50 placeholder:text-gray-600"
+                        />
+                      </div>
+
+                      {/* Thesis Status */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Thesis Status
+                        </label>
+                        <select
+                          {...register('thesis_status')}
+                          disabled={isSubmitting}
+                          className="w-full px-4 py-2 bg-[#0a0e27] border border-[#1f2544] rounded-lg text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#22d3ee] focus:ring-offset-2 focus:ring-offset-[#151932] disabled:opacity-50"
+                        >
+                          <option value="">— none —</option>
+                          <option value="valid" className={thesisStatusColors.valid}>Valid</option>
+                          <option value="watch" className={thesisStatusColors.watch}>Watch</option>
+                          <option value="reconsider" className={thesisStatusColors.reconsider}>Reconsider</option>
+                        </select>
+                      </div>
+
+                      {/* Alert Threshold */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Alert Threshold (%)
+                        </label>
+                        <input
+                          {...register('alert_threshold_pct')}
+                          type="number"
+                          step="0.1"
+                          disabled={isSubmitting}
+                          placeholder="e.g., -20"
+                          className="w-full px-4 py-2 bg-[#0a0e27] border border-[#1f2544] rounded-lg text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#22d3ee] focus:ring-offset-2 focus:ring-offset-[#151932] disabled:opacity-50 placeholder:text-gray-600"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Alert when price drops below this % from purchase price (e.g., -20)
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-4">
                     <Button

@@ -11,11 +11,20 @@ export interface User {
 export interface InvestmentProfile {
   currency_preference: string;
   risk_tolerance: 'conservative' | 'moderate' | 'aggressive';
+  investment_horizon: string | null;
+  ethical_exclusions: string | null;
+  country: string | null;
+  interests: string | null;
+  last_macro_context: string | null;
 }
 
 export interface InvestmentProfileUpdate {
   currency_preference?: string;
   risk_tolerance?: 'conservative' | 'moderate' | 'aggressive';
+  investment_horizon?: string;
+  ethical_exclusions?: string;
+  country?: string;
+  interests?: string;
 }
 
 // Auth types
@@ -53,6 +62,10 @@ export interface Investment {
   dividend_yield: number | null;
   expense_ratio: number | null;
   notes: string | null;
+  investment_thesis: string | null;
+  thesis_status: 'valid' | 'watch' | 'reconsider' | null;
+  alert_threshold_pct: number | null;
+  account_type: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -64,6 +77,10 @@ export interface InvestmentCreate {
   isin?: string;
   purchase_date: string;
   quantity: number;
+  notes?: string;
+  investment_thesis?: string;
+  thesis_status?: 'valid' | 'watch' | 'reconsider';
+  alert_threshold_pct?: number;
 }
 
 export interface InvestmentUpdate {
@@ -148,40 +165,78 @@ export interface APIError {
   status?: number;
 }
 
-// AI Agent Streaming Event types
-export type AgentEventType = 'step_start' | 'step_complete' | 'tool_call' | 'tool_output' | 'message' | 'final_output' | 'error';
+// Investment suggestion (emitted by the agent at end of workflow)
+export interface InvestmentSuggestion {
+  symbol: string;
+  name: string;
+  account_type: 'CTO' | 'PEA';
+  allocation_eur: number | null;
+  current_price: number | null;
+  currency: string;
+  suggested_quantity: number | null;
+  investment_thesis: string | null;
+  notes: string | null;
+  alert_threshold_pct: number | null;
+}
+
+// Pre-fill values passed to AddInvestmentModal when opening from a suggestion
+export interface InvestmentInitialValues {
+  account_type?: 'CTO' | 'PEA';
+  ticker_symbol?: string;
+  suggested_quantity?: number | null;
+  investment_thesis?: string | null;
+  notes?: string | null;
+  alert_threshold_pct?: number | null;
+}
+
+// AI Agent Streaming Event types (v2 — DeepAgents workflow)
+export type AgentEventType = 'workflow_start' | 'step_start' | 'step_complete' | 'tool_call' | 'token' | 'final_report' | 'workflow_complete' | 'investment_suggestions' | 'error';
+
+export interface WorkflowStartEvent {
+  type: 'workflow_start';
+  report_id: string;
+  message: string;
+}
 
 export interface StepStartEvent {
   type: 'step_start';
   step: number;
-  name: string;
+  step_name: string;
 }
 
 export interface StepCompleteEvent {
   type: 'step_complete';
   step: number;
-  summary: string;
+  step_name: string;
+  result?: string;
 }
 
 export interface ToolCallEvent {
   type: 'tool_call';
-  tool_name: string;
-  arguments: string;
+  tool: string;
+  inputs: Record<string, string>;
 }
 
-export interface ToolOutputEvent {
-  type: 'tool_output';
-  output: string;
+export interface TokenEvent {
+  type: 'token';
+  content: string;
+  agent: string;
 }
 
-export interface MessageEvent {
-  type: 'message';
+export interface WorkflowCompleteEvent {
+  type: 'workflow_complete';
+  report_id: string;
+  message: string;
+}
+
+export interface FinalReportEvent {
+  type: 'final_report';
   content: string;
 }
 
-export interface FinalOutputEvent {
-  type: 'final_output';
-  recommendation: string;
+export interface InvestmentSuggestionsEvent {
+  type: 'investment_suggestions';
+  suggestions: InvestmentSuggestion[];
 }
 
 export interface ErrorEvent {
@@ -190,10 +245,12 @@ export interface ErrorEvent {
 }
 
 export type AgentStreamEvent =
+  | WorkflowStartEvent
   | StepStartEvent
   | StepCompleteEvent
   | ToolCallEvent
-  | ToolOutputEvent
-  | MessageEvent
-  | FinalOutputEvent
+  | TokenEvent
+  | FinalReportEvent
+  | WorkflowCompleteEvent
+  | InvestmentSuggestionsEvent
   | ErrorEvent;

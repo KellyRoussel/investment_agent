@@ -12,13 +12,13 @@ export const recommendationsService = {
    * @param onEvent - Callback function called for each streaming event
    * @returns A function to abort the stream
    */
-  streamRecommendation(onEvent: (event: AgentStreamEvent) => void): () => void {
+  streamRecommendation(budgetEur: number, onEvent: (event: AgentStreamEvent) => void): () => void {
     const token = storage.getAccessToken();
     const abortController = new AbortController();
 
     const fetchStream = async () => {
       try {
-        const response = await fetch('/api/investment/recommendations/generate', {
+        const response = await fetch(`/api/investment/recommendations/generate/v2?budget_eur=${budgetEur}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -59,6 +59,12 @@ export const recommendationsService = {
               }
             }
           }
+
+          // Yield to the browser's macrotask queue so React's MessageChannel
+          // scheduler can flush pending state updates before the next chunk.
+          // Without this, rapid microtask-resolved reads batch all setState
+          // calls into a single render at the end of the stream.
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
         }
       } catch (error: any) {
         if (error.name !== 'AbortError') {
