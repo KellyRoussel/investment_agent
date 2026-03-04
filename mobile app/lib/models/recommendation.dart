@@ -1,108 +1,179 @@
+double _toDouble(dynamic value, [double fallback = 0]) {
+  if (value == null) return fallback;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? fallback;
+  return fallback;
+}
+
 sealed class AgentStreamEvent {
   factory AgentStreamEvent.fromJson(Map<String, dynamic> json) {
     final type = json['type'] as String;
     switch (type) {
+      case 'workflow_start':
+        return WorkflowStartEvent.fromJson(json);
       case 'step_start':
         return StepStartEvent.fromJson(json);
       case 'step_complete':
         return StepCompleteEvent.fromJson(json);
       case 'tool_call':
         return ToolCallEvent.fromJson(json);
-      case 'tool_output':
-        return ToolOutputEvent.fromJson(json);
-      case 'message':
-        return MessageEvent.fromJson(json);
-      case 'final_output':
-        return FinalOutputEvent.fromJson(json);
+      case 'token':
+        return TokenEvent.fromJson(json);
+      case 'final_report':
+        return FinalReportEvent.fromJson(json);
+      case 'investment_suggestions':
+        return InvestmentSuggestionsEvent.fromJson(json);
       case 'workflow_complete':
         return WorkflowCompleteEvent.fromJson(json);
       case 'error':
         return ErrorEvent.fromJson(json);
       default:
-        return MessageEvent(content: 'Unknown event: $type');
+        return TokenEvent(content: '', agent: '');
     }
+  }
+}
+
+class WorkflowStartEvent implements AgentStreamEvent {
+  final String reportId;
+  final String message;
+
+  WorkflowStartEvent({required this.reportId, required this.message});
+
+  factory WorkflowStartEvent.fromJson(Map<String, dynamic> json) {
+    return WorkflowStartEvent(
+      reportId: json['report_id'] as String? ?? '',
+      message: json['message'] as String? ?? '',
+    );
   }
 }
 
 class StepStartEvent implements AgentStreamEvent {
   final int step;
-  final String name;
+  final String stepName;
 
-  StepStartEvent({required this.step, required this.name});
+  StepStartEvent({required this.step, required this.stepName});
 
   factory StepStartEvent.fromJson(Map<String, dynamic> json) {
     return StepStartEvent(
       step: json['step'] as int,
-      name: json['name'] as String,
+      stepName: json['step_name'] as String? ?? '',
     );
   }
 }
 
 class StepCompleteEvent implements AgentStreamEvent {
   final int step;
-  final String summary;
+  final String? result;
 
-  StepCompleteEvent({required this.step, required this.summary});
+  StepCompleteEvent({required this.step, this.result});
 
   factory StepCompleteEvent.fromJson(Map<String, dynamic> json) {
     return StepCompleteEvent(
       step: json['step'] as int,
-      summary: json['summary'] as String,
+      result: json['result'] as String?,
     );
   }
 }
 
 class ToolCallEvent implements AgentStreamEvent {
-  final String toolName;
-  final String arguments;
+  final String tool;
+  final Map<String, dynamic> inputs;
 
-  ToolCallEvent({required this.toolName, required this.arguments});
+  ToolCallEvent({required this.tool, required this.inputs});
 
   factory ToolCallEvent.fromJson(Map<String, dynamic> json) {
     return ToolCallEvent(
-      toolName: json['tool_name'] as String,
-      arguments: json['arguments'] as String? ?? '',
+      tool: json['tool'] as String? ?? '',
+      inputs: (json['inputs'] as Map<String, dynamic>?) ?? {},
     );
   }
 }
 
-class ToolOutputEvent implements AgentStreamEvent {
-  final String output;
+class TokenEvent implements AgentStreamEvent {
+  final String content;
+  final String agent;
 
-  ToolOutputEvent({required this.output});
+  TokenEvent({required this.content, required this.agent});
 
-  factory ToolOutputEvent.fromJson(Map<String, dynamic> json) {
-    return ToolOutputEvent(output: json['output'] as String);
+  factory TokenEvent.fromJson(Map<String, dynamic> json) {
+    return TokenEvent(
+      content: json['content'] as String? ?? '',
+      agent: json['agent'] as String? ?? '',
+    );
   }
 }
 
-class MessageEvent implements AgentStreamEvent {
+class FinalReportEvent implements AgentStreamEvent {
   final String content;
 
-  MessageEvent({required this.content});
+  FinalReportEvent({required this.content});
 
-  factory MessageEvent.fromJson(Map<String, dynamic> json) {
-    return MessageEvent(content: json['content'] as String);
+  factory FinalReportEvent.fromJson(Map<String, dynamic> json) {
+    return FinalReportEvent(content: json['content'] as String? ?? '');
   }
 }
 
-class FinalOutputEvent implements AgentStreamEvent {
-  final String recommendation;
+class InvestmentSuggestion {
+  final String symbol;
+  final String? name;
+  final String accountType;
+  final double? allocationEur;
+  final double? currentPrice;
+  final String? currency;
+  final double? suggestedQuantity;
+  final String? investmentThesis;
+  final String? notes;
+  final double? alertThresholdPct;
 
-  FinalOutputEvent({required this.recommendation});
+  InvestmentSuggestion({
+    required this.symbol,
+    this.name,
+    required this.accountType,
+    this.allocationEur,
+    this.currentPrice,
+    this.currency,
+    this.suggestedQuantity,
+    this.investmentThesis,
+    this.notes,
+    this.alertThresholdPct,
+  });
 
-  factory FinalOutputEvent.fromJson(Map<String, dynamic> json) {
-    return FinalOutputEvent(recommendation: json['recommendation'] as String);
+  factory InvestmentSuggestion.fromJson(Map<String, dynamic> json) {
+    return InvestmentSuggestion(
+      symbol: json['symbol'] as String,
+      name: json['name'] as String?,
+      accountType: json['account_type'] as String? ?? 'CTO',
+      allocationEur: json['allocation_eur'] != null
+          ? _toDouble(json['allocation_eur'])
+          : null,
+      currentPrice: json['current_price'] != null
+          ? _toDouble(json['current_price'])
+          : null,
+      currency: json['currency'] as String?,
+      suggestedQuantity: json['suggested_quantity'] != null
+          ? _toDouble(json['suggested_quantity'])
+          : null,
+      investmentThesis: json['investment_thesis'] as String?,
+      notes: json['notes'] as String?,
+      alertThresholdPct: json['alert_threshold_pct'] != null
+          ? _toDouble(json['alert_threshold_pct'])
+          : null,
+    );
   }
 }
 
-class ErrorEvent implements AgentStreamEvent {
-  final String message;
+class InvestmentSuggestionsEvent implements AgentStreamEvent {
+  final List<InvestmentSuggestion> suggestions;
 
-  ErrorEvent({required this.message});
+  InvestmentSuggestionsEvent({required this.suggestions});
 
-  factory ErrorEvent.fromJson(Map<String, dynamic> json) {
-    return ErrorEvent(message: json['message'] as String);
+  factory InvestmentSuggestionsEvent.fromJson(Map<String, dynamic> json) {
+    final list = json['suggestions'] as List<dynamic>? ?? [];
+    return InvestmentSuggestionsEvent(
+      suggestions: list
+          .map((e) => InvestmentSuggestion.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
   }
 }
 
@@ -132,6 +203,16 @@ class WorkflowCompleteEvent implements AgentStreamEvent {
       costUsd: (json['cost_usd'] as num?)?.toDouble() ?? 0.0,
       model: json['model'] as String? ?? '',
     );
+  }
+}
+
+class ErrorEvent implements AgentStreamEvent {
+  final String message;
+
+  ErrorEvent({required this.message});
+
+  factory ErrorEvent.fromJson(Map<String, dynamic> json) {
+    return ErrorEvent(message: json['message'] as String? ?? 'Unknown error');
   }
 }
 

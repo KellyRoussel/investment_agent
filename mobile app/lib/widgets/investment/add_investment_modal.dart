@@ -10,8 +10,13 @@ import '../common/error_banner.dart';
 
 class AddInvestmentModal extends StatefulWidget {
   final Future<void> Function(InvestmentCreate data) onAdd;
+  final InvestmentInitialValues? initialValues;
 
-  const AddInvestmentModal({super.key, required this.onAdd});
+  const AddInvestmentModal({
+    super.key,
+    required this.onAdd,
+    this.initialValues,
+  });
 
   @override
   State<AddInvestmentModal> createState() => _AddInvestmentModalState();
@@ -23,15 +28,41 @@ class _AddInvestmentModalState extends State<AddInvestmentModal> {
   final _tickerController = TextEditingController();
   final _isinController = TextEditingController();
   final _quantityController = TextEditingController();
+  final _thesisController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _alertController = TextEditingController();
+  String _thesisStatus = 'valid';
   DateTime? _purchaseDate;
   bool _isLoading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _purchaseDate = DateTime.now();
+    final iv = widget.initialValues;
+    if (iv != null) {
+      if (iv.accountType != null) _accountType = iv.accountType!;
+      if (iv.tickerSymbol != null) _tickerController.text = iv.tickerSymbol!;
+      if (iv.suggestedQuantity != null) {
+        _quantityController.text = iv.suggestedQuantity!.toString();
+      }
+      if (iv.investmentThesis != null) _thesisController.text = iv.investmentThesis!;
+      if (iv.notes != null) _notesController.text = iv.notes!;
+      if (iv.alertThresholdPct != null) {
+        _alertController.text = iv.alertThresholdPct!.toString();
+      }
+    }
+  }
 
   @override
   void dispose() {
     _tickerController.dispose();
     _isinController.dispose();
     _quantityController.dispose();
+    _thesisController.dispose();
+    _notesController.dispose();
+    _alertController.dispose();
     super.dispose();
   }
 
@@ -69,12 +100,17 @@ class _AddInvestmentModalState extends State<AddInvestmentModal> {
     });
 
     try {
+      final thesis = _thesisController.text.trim();
       final data = InvestmentCreate(
         accountType: _accountType,
         tickerSymbol: _accountType == 'PEA' ? _tickerController.text.trim().toUpperCase() : null,
         isin: _accountType == 'CTO' ? _isinController.text.trim().toUpperCase() : null,
         purchaseDate: DateFormat('yyyy-MM-dd').format(_purchaseDate!),
         quantity: double.parse(_quantityController.text.trim()),
+        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        investmentThesis: thesis.isEmpty ? null : thesis,
+        thesisStatus: thesis.isEmpty ? null : _thesisStatus,
+        alertThresholdPct: double.tryParse(_alertController.text.trim()),
       );
       await widget.onAdd(data);
       if (mounted) Navigator.of(context).pop();
@@ -183,7 +219,7 @@ class _AddInvestmentModalState extends State<AddInvestmentModal> {
                 required: true,
                 hintText: 'e.g., 10',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                textInputAction: TextInputAction.done,
+                textInputAction: TextInputAction.next,
                 validator: validateQuantity,
               ),
               const SizedBox(height: 16),
@@ -236,6 +272,52 @@ class _AddInvestmentModalState extends State<AddInvestmentModal> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Investment Thesis (optional)
+              AppInput(
+                label: 'Investment Thesis',
+                controller: _thesisController,
+                hintText: 'Why are you investing in this?',
+                maxLines: 3,
+                textInputAction: TextInputAction.newline,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+
+              // Thesis Status (only shown when thesis is filled)
+              if (_thesisController.text.isNotEmpty) ...[
+                AppDropdown(
+                  label: 'Thesis Status',
+                  value: _thesisStatus,
+                  items: const [
+                    DropdownMenuItem(value: 'valid', child: Text('Valid')),
+                    DropdownMenuItem(value: 'watch', child: Text('Watch')),
+                    DropdownMenuItem(value: 'reconsider', child: Text('Reconsider')),
+                  ],
+                  onChanged: (v) => setState(() => _thesisStatus = v ?? 'valid'),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Notes (optional)
+              AppInput(
+                label: 'Notes',
+                controller: _notesController,
+                hintText: 'Personal notes about this investment',
+                maxLines: 2,
+                textInputAction: TextInputAction.newline,
+              ),
+              const SizedBox(height: 16),
+
+              // Alert threshold (optional)
+              AppInput(
+                label: 'Alert Threshold %',
+                controller: _alertController,
+                hintText: 'e.g., -15.0 (alert if price drops by this %)',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                textInputAction: TextInputAction.done,
               ),
               const SizedBox(height: 8),
 

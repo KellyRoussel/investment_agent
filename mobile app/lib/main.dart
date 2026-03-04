@@ -11,6 +11,8 @@ import 'services/investments_service.dart';
 import 'services/portfolio_service.dart';
 import 'services/recommendations_service.dart';
 import 'services/users_service.dart';
+import 'services/watchlist_service.dart';
+import 'services/report_service.dart';
 import 'core/constants/api_constants.dart';
 import 'providers/auth_provider.dart';
 import 'providers/portfolio_provider.dart';
@@ -18,6 +20,8 @@ import 'providers/investments_provider.dart';
 import 'providers/recommendations_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/warmup_provider.dart';
+import 'providers/watchlist_provider.dart';
+import 'providers/report_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +50,8 @@ void main() async {
   final portfolioService = PortfolioService(apiClient);
   final recommendationsService = RecommendationsService(apiClient.dio, storage);
   final usersService = UsersService(apiClient, storage);
+  final watchlistService = WatchlistService(apiClient);
+  final reportService = ReportService(apiClient);
 
   // Create warmup provider and start polling
   final warmupProvider = WarmupProvider(ApiConstants.baseUrl);
@@ -77,6 +83,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => InvestmentsProvider(investmentsService)),
         ChangeNotifierProvider(create: (_) => RecommendationsProvider(recommendationsService)),
         ChangeNotifierProvider.value(value: profileProvider),
+        ChangeNotifierProvider(create: (_) => WatchlistProvider(watchlistService)),
+        ChangeNotifierProvider(create: (_) => ReportProvider(reportService)),
         // Provide services directly for widgets that need them
         Provider.value(value: investmentsService),
       ],

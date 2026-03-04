@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../models/investment.dart';
 import '../../models/recommendation.dart';
+import '../../providers/investments_provider.dart';
 import '../../providers/recommendations_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/error_banner.dart';
+import '../../widgets/investment/add_investment_modal.dart';
 import '../../widgets/recommendations/workflow_progress.dart';
 import '../../widgets/recommendations/recommendation_result.dart';
 
@@ -37,14 +41,24 @@ class _WorkflowCostBanner extends StatelessWidget {
             'Workflow cost',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
-          const Spacer(),
-          _Chip(label: '${totalK}k tokens', color: AppColors.purple),
-          if (cost.hasCachedTokens) ...[
-            const SizedBox(width: 6),
-            _Chip(label: '${cachedK}k cached', color: AppColors.warning),
-          ],
           const SizedBox(width: 8),
-          _Chip(label: costStr, color: AppColors.cyan),
+          Flexible(
+            child: FittedBox(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _Chip(label: '${totalK}k tokens', color: AppColors.purple),
+                  if (cost.hasCachedTokens) ...[
+                    const SizedBox(width: 6),
+                    _Chip(label: '${cachedK}k cached', color: AppColors.warning),
+                  ],
+                  const SizedBox(width: 6),
+                  _Chip(label: costStr, color: AppColors.cyan),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -66,6 +80,121 @@ class _Chip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+class _SuggestionCard extends StatelessWidget {
+  final InvestmentSuggestion suggestion;
+  final VoidCallback onAddToPortfolio;
+
+  const _SuggestionCard({required this.suggestion, required this.onAddToPortfolio});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                suggestion.symbol,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.cyan.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.cyan.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  suggestion.accountType,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.cyan,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (suggestion.allocationEur != null)
+                Text(
+                  '€${suggestion.allocationEur!.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.cyan,
+                  ),
+                ),
+            ],
+          ),
+          if (suggestion.name != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              suggestion.name!,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          if (suggestion.currentPrice != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  '${suggestion.currentPrice!.toStringAsFixed(2)} ${suggestion.currency ?? ''}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                if (suggestion.suggestedQuantity != null) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    '× ${suggestion.suggestedQuantity!.toStringAsFixed(suggestion.suggestedQuantity! % 1 == 0 ? 0 : 2)} shares',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          if (suggestion.investmentThesis != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              suggestion.investmentThesis!,
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onAddToPortfolio,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add to Portfolio'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.cyan,
+                side: const BorderSide(color: AppColors.cyan),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -105,6 +234,30 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     provider.generateRecommendation(budgetEur: budget);
   }
 
+  void _showAddFromSuggestion(BuildContext ctx, InvestmentSuggestion suggestion) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => AddInvestmentModal(
+        initialValues: InvestmentInitialValues(
+          accountType: suggestion.accountType,
+          tickerSymbol: suggestion.symbol,
+          suggestedQuantity: suggestion.suggestedQuantity,
+          investmentThesis: suggestion.investmentThesis,
+          notes: suggestion.notes,
+          alertThresholdPct: suggestion.alertThresholdPct,
+        ),
+        onAdd: (data) async {
+          await ctx.read<InvestmentsProvider>().addInvestment(data);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<RecommendationsProvider>(
@@ -120,13 +273,29 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              const Text(
-                'AI Recommendations',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'AI Recommendations',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => context.push('/report-history'),
+                    icon: const Icon(Icons.history, size: 16, color: AppColors.textMuted),
+                    label: const Text(
+                      'History',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               const Text(
@@ -214,6 +383,46 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                     ),
                     const SizedBox(height: 20),
 
+                    // Model selector (only shown when models are loaded)
+                    if (provider.availableModels.isNotEmpty) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Model',
+                          style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: provider.selectedModel,
+                        isExpanded: true,
+                        dropdownColor: AppColors.surface,
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppColors.background,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.cyan),
+                          ),
+                        ),
+                        onChanged: provider.isLoading ? null : (v) => provider.selectModel(v!),
+                        items: provider.availableModels
+                            .map((m) => DropdownMenuItem<String>(value: m, child: Text(m)))
+                            .toList(),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
                     // Buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -253,6 +462,32 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               if (provider.workflowCost != null) ...[
                 _WorkflowCostBanner(cost: provider.workflowCost!),
                 const SizedBox(height: 16),
+              ],
+
+              // Investment suggestions
+              if (provider.hasSuggestions) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 16, color: AppColors.cyan),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Investment Suggestions (${provider.suggestions.length})',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...provider.suggestions.map(
+                  (s) => _SuggestionCard(
+                    suggestion: s,
+                    onAddToPortfolio: () => _showAddFromSuggestion(context, s),
+                  ),
+                ),
+                const SizedBox(height: 4),
               ],
 
               // Recommendation result

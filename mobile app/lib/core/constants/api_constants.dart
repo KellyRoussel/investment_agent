@@ -34,7 +34,15 @@ class ApiConstants {
 
   // Recommendations
   static const recommendations = '/investment/recommendations/generate/v2';
+  static const investmentModels = '/investment/models';
 
   // Profile
   static const investmentProfile = '/investment/profile';
+
+  // Watchlist
+  static const watchlist = '/investment/watchlist';
+  static String watchlistItem(String id) => '/investment/watchlist/$id';
+
+  // Report history
+  static const reportHistory = '/investment/recommendations/history';
 }

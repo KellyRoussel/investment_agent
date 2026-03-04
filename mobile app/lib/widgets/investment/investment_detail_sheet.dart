@@ -160,12 +160,16 @@ class _DetailGrid extends StatelessWidget {
                   item.$1,
                   style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
                 ),
-                Text(
-                  item.$2,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                const SizedBox(width: 16),
+                Flexible(
+                  child: Text(
+                    item.$2,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],

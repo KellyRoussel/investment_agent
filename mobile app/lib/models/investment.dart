@@ -22,6 +22,10 @@ class Investment {
   final double? dividendYield;
   final double? expenseRatio;
   final String? notes;
+  final String? investmentThesis;
+  final String? thesisStatus;
+  final double? alertThresholdPct;
+  final String? accountType;
   final bool isActive;
   final String createdAt;
   final String updatedAt;
@@ -43,6 +47,10 @@ class Investment {
     this.dividendYield,
     this.expenseRatio,
     this.notes,
+    this.investmentThesis,
+    this.thesisStatus,
+    this.alertThresholdPct,
+    this.accountType,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
@@ -72,6 +80,12 @@ class Investment {
           ? _toDouble(json['expense_ratio'])
           : null,
       notes: json['notes'] as String?,
+      investmentThesis: json['investment_thesis'] as String?,
+      thesisStatus: json['thesis_status'] as String?,
+      alertThresholdPct: json['alert_threshold_pct'] != null
+          ? _toDouble(json['alert_threshold_pct'])
+          : null,
+      accountType: json['account_type'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String,
@@ -95,6 +109,10 @@ class Investment {
     'dividend_yield': dividendYield,
     'expense_ratio': expenseRatio,
     'notes': notes,
+    'investment_thesis': investmentThesis,
+    'thesis_status': thesisStatus,
+    'alert_threshold_pct': alertThresholdPct,
+    'account_type': accountType,
     'is_active': isActive,
     'created_at': createdAt,
     'updated_at': updatedAt,
@@ -107,6 +125,10 @@ class InvestmentCreate {
   final String? isin;
   final String purchaseDate;
   final double quantity;
+  final String? notes;
+  final String? investmentThesis;
+  final String? thesisStatus;
+  final double? alertThresholdPct;
 
   InvestmentCreate({
     required this.accountType,
@@ -114,6 +136,10 @@ class InvestmentCreate {
     this.isin,
     required this.purchaseDate,
     required this.quantity,
+    this.notes,
+    this.investmentThesis,
+    this.thesisStatus,
+    this.alertThresholdPct,
   });
 
   Map<String, dynamic> toJson() {
@@ -124,6 +150,30 @@ class InvestmentCreate {
     };
     if (tickerSymbol != null) map['ticker_symbol'] = tickerSymbol;
     if (isin != null) map['isin'] = isin;
+    if (notes != null && notes!.isNotEmpty) map['notes'] = notes;
+    if (investmentThesis != null && investmentThesis!.isNotEmpty) {
+      map['investment_thesis'] = investmentThesis;
+    }
+    if (thesisStatus != null) map['thesis_status'] = thesisStatus;
+    if (alertThresholdPct != null) map['alert_threshold_pct'] = alertThresholdPct;
     return map;
   }
+}
+
+class InvestmentInitialValues {
+  final String? accountType;
+  final String? tickerSymbol;
+  final double? suggestedQuantity;
+  final String? investmentThesis;
+  final String? notes;
+  final double? alertThresholdPct;
+
+  const InvestmentInitialValues({
+    this.accountType,
+    this.tickerSymbol,
+    this.suggestedQuantity,
+    this.investmentThesis,
+    this.notes,
+    this.alertThresholdPct,
+  });
 }

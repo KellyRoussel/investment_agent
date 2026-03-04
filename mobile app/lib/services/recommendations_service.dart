@@ -11,12 +11,28 @@ class RecommendationsService {
 
   RecommendationsService(this._dio, this._storage);
 
-  Stream<AgentStreamEvent> streamRecommendation(CancelToken cancelToken, {required double budgetEur}) async* {
+  Future<Map<String, dynamic>> fetchAvailableModels() async {
     final token = await _storage.getAccessToken();
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiConstants.investmentModels,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return response.data!;
+  }
+
+  Stream<AgentStreamEvent> streamRecommendation(
+    CancelToken cancelToken, {
+    required double budgetEur,
+    String? model,
+  }) async* {
+    final token = await _storage.getAccessToken();
+
+    final queryParameters = <String, dynamic>{'budget_eur': budgetEur};
+    if (model != null) queryParameters['model'] = model;
 
     final response = await _dio.get<ResponseBody>(
       ApiConstants.recommendations,
-      queryParameters: {'budget_eur': budgetEur},
+      queryParameters: queryParameters,
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',

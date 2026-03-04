@@ -11,8 +11,9 @@ class BottomNavShell extends StatelessWidget {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/portfolio')) return 0;
     if (location.startsWith('/investments')) return 1;
-    if (location.startsWith('/recommendations')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/watchlist')) return 2;
+    if (location.startsWith('/recommendations')) return 3;
+    if (location.startsWith('/profile')) return 4;
     return 0;
   }
 
@@ -23,8 +24,10 @@ class BottomNavShell extends StatelessWidget {
       case 1:
         context.go('/investments');
       case 2:
-        context.go('/recommendations');
+        context.go('/watchlist');
       case 3:
+        context.go('/recommendations');
+      case 4:
         context.go('/profile');
     }
   }
@@ -57,6 +60,11 @@ class BottomNavShell extends StatelessWidget {
               icon: Icon(Icons.business_center_outlined),
               activeIcon: Icon(Icons.business_center),
               label: 'Investments',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bookmark_border),
+              activeIcon: Icon(Icons.bookmark),
+              label: 'Watchlist',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.auto_awesome_outlined),

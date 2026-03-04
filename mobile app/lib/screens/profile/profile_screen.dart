@@ -8,6 +8,7 @@ import '../../providers/profile_provider.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dropdown.dart';
+import '../../widgets/common/app_input.dart';
 import '../../widgets/common/error_banner.dart';
 import '../../widgets/common/success_banner.dart';
 
@@ -21,6 +22,10 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String _currency = 'USD';
   String _riskTolerance = 'moderate';
+  final _horizonController = TextEditingController();
+  final _countryController = TextEditingController();
+  final _exclusionsController = TextEditingController();
+  final _interestsController = TextEditingController();
 
   static const _currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'];
   static const _riskLevels = [
@@ -37,9 +42,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _horizonController.dispose();
+    _countryController.dispose();
+    _exclusionsController.dispose();
+    _interestsController.dispose();
+    super.dispose();
+  }
+
   void _initEditFields(InvestmentProfile? profile) {
     _currency = profile?.currencyPreference ?? 'USD';
     _riskTolerance = profile?.riskTolerance ?? 'moderate';
+    _horizonController.text = profile?.investmentHorizon ?? '';
+    _countryController.text = profile?.country ?? '';
+    _exclusionsController.text = profile?.ethicalExclusions ?? '';
+    _interestsController.text = profile?.interests ?? '';
   }
 
   Future<void> _savePrefs() async {
@@ -47,6 +65,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       InvestmentProfileUpdate(
         currencyPreference: _currency,
         riskTolerance: _riskTolerance,
+        investmentHorizon: _horizonController.text.trim().isEmpty
+            ? null
+            : _horizonController.text.trim(),
+        country: _countryController.text.trim().isEmpty
+            ? null
+            : _countryController.text.trim(),
+        ethicalExclusions: _exclusionsController.text.trim().isEmpty
+            ? null
+            : _exclusionsController.text.trim(),
+        interests: _interestsController.text.trim().isEmpty
+            ? null
+            : _interestsController.text.trim(),
       ),
     );
   }
@@ -204,6 +234,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             .toList(),
                         onChanged: (v) => setState(() => _riskTolerance = v ?? 'moderate'),
                       ),
+                      const SizedBox(height: 12),
+                      AppInput(
+                        label: 'Investment Horizon',
+                        controller: _horizonController,
+                        hintText: 'e.g., 5-10 years',
+                        textInputAction: TextInputAction.next,
+                      ),
+                      const SizedBox(height: 12),
+                      AppInput(
+                        label: 'Country',
+                        controller: _countryController,
+                        hintText: 'e.g., France',
+                        textInputAction: TextInputAction.next,
+                      ),
+                      const SizedBox(height: 12),
+                      AppInput(
+                        label: 'Ethical Exclusions',
+                        controller: _exclusionsController,
+                        hintText: 'e.g., Tobacco, Weapons, Fossil fuels',
+                        maxLines: 2,
+                        textInputAction: TextInputAction.newline,
+                      ),
+                      const SizedBox(height: 12),
+                      AppInput(
+                        label: 'Interests / Themes',
+                        controller: _interestsController,
+                        hintText: 'e.g., Clean energy, AI, Healthcare',
+                        maxLines: 2,
+                        textInputAction: TextInputAction.newline,
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -234,10 +294,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: 'Risk Tolerance',
                         value: _capitalize(profile?.riskTolerance ?? 'moderate'),
                       ),
+                      const SizedBox(height: 8),
+                      _PrefRow(
+                        label: 'Investment Horizon',
+                        value: profile?.investmentHorizon ?? '—',
+                      ),
+                      const SizedBox(height: 8),
+                      _PrefRow(
+                        label: 'Country',
+                        value: profile?.country ?? '—',
+                      ),
+                      const SizedBox(height: 8),
+                      _PrefRow(
+                        label: 'Ethical Exclusions',
+                        value: profile?.ethicalExclusions ?? '—',
+                      ),
+                      const SizedBox(height: 8),
+                      _PrefRow(
+                        label: 'Interests / Themes',
+                        value: profile?.interests ?? '—',
+                      ),
                     ],
                   ],
                 ),
               ),
+
+              // Macro Context Card (read-only, set by AI)
+              if (profile?.lastMacroContext != null) ...[
+                const SizedBox(height: 16),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.analytics_outlined,
+                              color: AppColors.purple, size: 16),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Last Macro Context',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Text(
+                            'Set by AI',
+                            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          profile!.lastMacroContext!,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 24),
 
               // Logout button
@@ -349,12 +477,15 @@ class _PrefRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+          Flexible(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.end,
             ),
           ),
         ],

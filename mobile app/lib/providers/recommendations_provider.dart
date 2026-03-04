@@ -18,8 +18,14 @@ class RecommendationsProvider extends ChangeNotifier {
   CancelToken? _cancelToken;
   StreamSubscription? _subscription;
   WorkflowCost? _workflowCost;
+  String? _reportId;
+  List<InvestmentSuggestion> _suggestions = [];
+  List<String> _availableModels = [];
+  String _selectedModel = 'gpt-5-mini';
 
-  RecommendationsProvider(this._service);
+  RecommendationsProvider(this._service) {
+    _loadAvailableModels();
+  }
 
   List<WorkflowStep> get workflowSteps => _workflowSteps;
   String? get recommendation => _recommendation;
@@ -27,15 +33,34 @@ class RecommendationsProvider extends ChangeNotifier {
   String? get error => _error;
   bool get activityExpanded => _activityExpanded;
   Set<int> get expandedSteps => _expandedSteps;
-  int get completedSteps => _workflowSteps.where((s) => s.status == WorkflowStepStatus.completed).length;
+  int get completedSteps =>
+      _workflowSteps.where((s) => s.status == WorkflowStepStatus.completed).length;
   WorkflowCost? get workflowCost => _workflowCost;
+  String? get reportId => _reportId;
+  List<InvestmentSuggestion> get suggestions => _suggestions;
+  bool get hasSuggestions => _suggestions.isNotEmpty;
+  List<String> get availableModels => _availableModels;
+  String get selectedModel => _selectedModel;
+
+  void selectModel(String model) {
+    _selectedModel = model;
+    notifyListeners();
+  }
+
+  Future<void> _loadAvailableModels() async {
+    try {
+      final data = await _service.fetchAvailableModels();
+      _availableModels = List<String>.from(data['models'] as List);
+      notifyListeners();
+    } catch (_) {
+      // Non-blocking — model selector stays hidden if the call fails
+    }
+  }
 
   static const _stepNames = [
-    'Market Discovery',
-    'Building Candidate List',
-    'Ethical Screening & Portfolio Fit',
-    'Deep Dive Research',
-    'Generating Recommendations',
+    'Portfolio Review',
+    'Macro & Sector Scan',
+    'Opportunity Research',
   ];
 
   Future<void> generateRecommendation({required double budgetEur}) async {
@@ -45,19 +70,25 @@ class RecommendationsProvider extends ChangeNotifier {
     _workflowCost = null;
     _toolCallIdCounter = 0;
     _currentStep = null;
+    _reportId = null;
+    _suggestions = [];
     _expandedSteps.clear();
     _activityExpanded = true;
 
-    _workflowSteps = List.generate(
-      5,
-      (i) => WorkflowStep(step: i + 1, name: _stepNames[i]),
-    );
+    // 3 backend steps + 1 synthetic "Decision & Thesis" step
+    _workflowSteps = [
+      ...List.generate(
+        3,
+        (i) => WorkflowStep(step: i + 1, name: _stepNames[i]),
+      ),
+      WorkflowStep(step: 4, name: 'Decision & Thesis'),
+    ];
     notifyListeners();
 
     _cancelToken = CancelToken();
 
     try {
-      final stream = _service.streamRecommendation(_cancelToken!, budgetEur: budgetEur);
+      final stream = _service.streamRecommendation(_cancelToken!, budgetEur: budgetEur, model: _selectedModel);
       await for (final event in stream) {
         _handleEvent(event);
       }
@@ -75,13 +106,15 @@ class RecommendationsProvider extends ChangeNotifier {
 
   void _handleEvent(AgentStreamEvent event) {
     switch (event) {
-      case StepStartEvent(:final step, :final name):
+      case WorkflowStartEvent(:final reportId):
+        _reportId = reportId;
+
+      case StepStartEvent(:final step, :final stepName):
         final idx = step - 1;
         if (idx >= 0 && idx < _workflowSteps.length) {
-          _workflowSteps[idx].status = WorkflowStepStatus.inProgress;
           _workflowSteps[idx] = WorkflowStep(
             step: step,
-            name: name.isNotEmpty ? name : _workflowSteps[idx].name,
+            name: stepName.isNotEmpty ? stepName : _workflowSteps[idx].name,
             status: WorkflowStepStatus.inProgress,
             toolCalls: _workflowSteps[idx].toolCalls,
           );
@@ -89,38 +122,55 @@ class RecommendationsProvider extends ChangeNotifier {
           _expandedSteps.add(idx);
         }
 
-      case StepCompleteEvent(:final step, :final summary):
+      case StepCompleteEvent(:final step, :final result):
         final idx = step - 1;
         if (idx >= 0 && idx < _workflowSteps.length) {
           _workflowSteps[idx] = WorkflowStep(
             step: step,
             name: _workflowSteps[idx].name,
             status: WorkflowStepStatus.completed,
-            summary: summary,
+            summary: result,
             toolCalls: _workflowSteps[idx].toolCalls,
           );
         }
 
-      case ToolCallEvent(:final toolName, :final arguments):
+      case ToolCallEvent(:final tool, :final inputs):
         if (_currentStep != null && _currentStep! < _workflowSteps.length) {
+          final query = inputs.isNotEmpty ? inputs.values.first.toString() : '';
           _workflowSteps[_currentStep!].toolCalls.add(
             ToolCall(
               id: _toolCallIdCounter++,
-              toolName: toolName,
-              query: arguments,
+              toolName: tool,
+              query: query,
             ),
           );
         }
 
-      case FinalOutputEvent(:final recommendation):
-        _recommendation = recommendation;
+      case TokenEvent():
+        break; // No-op: token streaming not displayed at this time
+
+      case FinalReportEvent(:final content):
+        _recommendation = content;
+        // Mark step 4 (Decision & Thesis) as completed
+        if (_workflowSteps.length >= 4) {
+          _workflowSteps[3] = WorkflowStep(
+            step: 4,
+            name: 'Decision & Thesis',
+            status: WorkflowStepStatus.completed,
+          );
+        }
         _isLoading = false;
 
-      case ErrorEvent(:final message):
-        _error = message;
-        _isLoading = false;
+      case InvestmentSuggestionsEvent(:final suggestions):
+        _suggestions = suggestions;
 
-      case WorkflowCompleteEvent(:final tokensInput, :final tokensCached, :final tokensOutput, :final costUsd, :final model):
+      case WorkflowCompleteEvent(
+          :final tokensInput,
+          :final tokensCached,
+          :final tokensOutput,
+          :final costUsd,
+          :final model,
+        ):
         _workflowCost = WorkflowCost(
           tokensInput: tokensInput,
           tokensCached: tokensCached,
@@ -129,9 +179,9 @@ class RecommendationsProvider extends ChangeNotifier {
           model: model,
         );
 
-      case ToolOutputEvent():
-      case MessageEvent():
-        break;
+      case ErrorEvent(:final message):
+        _error = message;
+        _isLoading = false;
     }
     notifyListeners();
   }

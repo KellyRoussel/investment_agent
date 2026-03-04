@@ -13,13 +13,19 @@ export const recommendationsService = {
    * @param onEvent - Callback function called for each streaming event
    * @returns A function to abort the stream
    */
-  streamRecommendation(budgetEur: number, onEvent: (event: AgentStreamEvent) => void): () => void {
+  async fetchModels(): Promise<{ models: string[]; default: string }> {
+    const response = await api.get<{ models: string[]; default: string }>('/investment/models');
+    return response.data;
+  },
+
+  streamRecommendation(budgetEur: number, model: string | null, onEvent: (event: AgentStreamEvent) => void): () => void {
     const token = storage.getAccessToken();
     const abortController = new AbortController();
 
     const fetchStream = async () => {
       try {
-        const response = await fetch(`/api/investment/recommendations/generate/v2?budget_eur=${budgetEur}`, {
+        const modelParam = model ? `&model=${encodeURIComponent(model)}` : '';
+        const response = await fetch(`/api/investment/recommendations/generate/v2?budget_eur=${budgetEur}${modelParam}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,

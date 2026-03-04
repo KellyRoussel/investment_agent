@@ -6,7 +6,9 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
 import '../screens/portfolio/portfolio_screen.dart';
 import '../screens/investments/investments_screen.dart';
+import '../screens/watchlist/watchlist_screen.dart';
 import '../screens/recommendations/recommendations_screen.dart';
+import '../screens/reports/report_history_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/warmup/warmup_screen.dart';
 import 'bottom_nav_shell.dart';
@@ -47,6 +49,11 @@ class AppRouter {
           path: '/signup',
           builder: (context, state) => const SignupScreen(),
         ),
+        // Report history is a pushed detail screen — outside the shell (no bottom nav)
+        GoRoute(
+          path: '/report-history',
+          builder: (context, state) => const ReportHistoryScreen(),
+        ),
         ShellRoute(
           builder: (context, state, child) => BottomNavShell(child: child),
           routes: [
@@ -60,6 +67,12 @@ class AppRouter {
               path: '/investments',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: InvestmentsScreen(),
+              ),
+            ),
+            GoRoute(
+              path: '/watchlist',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: WatchlistScreen(),
               ),
             ),
             GoRoute(

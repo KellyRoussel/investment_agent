@@ -21,7 +21,7 @@ class InvestmentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Symbol + Asset Type badge
+          // Header: Symbol + Account Type badge + Asset Type badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -33,20 +33,17 @@ class InvestmentCard extends StatelessWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  formatAssetType(investment.assetType),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF3B82F6),
+              Row(
+                children: [
+                  if (investment.accountType != null) ...[
+                    _Badge(label: investment.accountType!, color: AppColors.cyan),
+                    const SizedBox(width: 6),
+                  ],
+                  _Badge(
+                    label: formatAssetType(investment.assetType),
+                    color: const Color(0xFF3B82F6),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -57,6 +54,10 @@ class InvestmentCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          if (investment.thesisStatus != null) ...[
+            const SizedBox(height: 6),
+            _ThesisStatusBadge(status: investment.thesisStatus!),
+          ],
           const SizedBox(height: 12),
           const Divider(color: AppColors.border, height: 1),
           const SizedBox(height: 12),
@@ -74,16 +75,94 @@ class InvestmentCard extends StatelessWidget {
             value: formatCurrency(investment.totalCost, investment.currency),
           ),
 
-          if (investment.sector != null) ...[
-            const SizedBox(height: 12),
-            const Divider(color: AppColors.border, height: 1),
-            const SizedBox(height: 8),
+          if (investment.investmentThesis != null) ...[
+            const SizedBox(height: 10),
             Text(
-              investment.sector!,
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              investment.investmentThesis!,
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
+
+          if (investment.sector != null || investment.alertThresholdPct != null) ...[
+            const SizedBox(height: 10),
+            const Divider(color: AppColors.border, height: 1),
+            const SizedBox(height: 8),
+            if (investment.sector != null)
+              Text(
+                investment.sector!,
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            if (investment.alertThresholdPct != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.notifications_outlined, size: 12, color: AppColors.warning),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Alert at ${investment.alertThresholdPct!.toStringAsFixed(1)}%',
+                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _Badge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _ThesisStatusBadge extends StatelessWidget {
+  final String status;
+
+  const _ThesisStatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, label) = switch (status) {
+      'valid' => (AppColors.success, 'Valid'),
+      'watch' => (AppColors.warning, 'Watch'),
+      'reconsider' => (AppColors.danger, 'Reconsider'),
+      _ => (AppColors.textMuted, status),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }

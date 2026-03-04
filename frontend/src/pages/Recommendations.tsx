@@ -41,9 +41,17 @@ export function Recommendations() {
   const [workflowCost, setWorkflowCost] = useState<Pick<WorkflowCompleteEvent, 'tokens_input' | 'tokens_cached' | 'tokens_output' | 'cost_usd' | 'model'> | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addModalInitialValues, setAddModalInitialValues] = useState<InvestmentInitialValues | undefined>(undefined);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-5-mini');
   const toolCallIdRef = useRef(0);
   const currentStepRef = useRef<number | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    recommendationsService.fetchModels().then(data => {
+      setAvailableModels(data.models);
+    }).catch(() => {/* non-blocking */});
+  }, []);
 
   const budgetValue = parseFloat(budget);
   const budgetValid = !isNaN(budgetValue) && budgetValue > 0;
@@ -80,7 +88,7 @@ export function Recommendations() {
     toolCallIdRef.current = 0;
     currentStepRef.current = null;
 
-    abortRef.current = recommendationsService.streamRecommendation(budgetValue, (event: AgentStreamEvent) => {
+    abortRef.current = recommendationsService.streamRecommendation(budgetValue, selectedModel, (event: AgentStreamEvent) => {
       if (event.type === 'step_start') {
         const stepEvent = event as StepStartEvent;
         currentStepRef.current = stepEvent.step;
@@ -253,6 +261,23 @@ export function Recommendations() {
               </span>
             </div>
           </div>
+
+          {/* Model Selector */}
+          {availableModels.length > 0 && (
+            <div className="flex items-center gap-3 justify-center">
+              <label className="text-gray-400 text-sm whitespace-nowrap">Model</label>
+              <select
+                value={selectedModel}
+                onChange={e => setSelectedModel(e.target.value)}
+                disabled={loading}
+                className="bg-[#0a0e27] border border-[#1f2544] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#22d3ee] disabled:opacity-50"
+              >
+                {availableModels.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex gap-3 justify-center">
             <Button
