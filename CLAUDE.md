@@ -4,106 +4,69 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Investment Portfolio API - A full-stack application for managing financial investments with AI-powered recommendations.
+InvestTrack — an AI-powered investment portfolio management app. The backend lives in the separate `myBackend` repository. This repo contains two clients:
 
-**Monorepo Structure:**
-- `app/` - FastAPI backend (Python 3.13+)
-- `frontend/` - React 19 + TypeScript + Vite
-- `mobile app/` - Flutter mobile app (InvestTrack)
+- `frontend/` — React 19 + TypeScript + Vite web app
+- `mobile app/` — Flutter 3.7.2+ Android/iOS app
 
-## Common Commands
+## Commands
 
-### Backend
+### Frontend (React)
+
 ```bash
-# Start development server
-python -m uvicorn app.main:app --reload
-
-# Database migrations
-alembic revision --autogenerate -m "message"
-alembic upgrade head
-
-# Start PostgreSQL (via Docker)
-docker-compose up -d db
+cd frontend
+npm install
+npm run dev       # Dev server on :5173 (proxies /api → localhost:8000)
+npm run build     # tsc + vite build
+npm run lint      # ESLint
+npm run preview   # Preview production build
 ```
 
-### Frontend (from `frontend/` directory)
-```bash
-npm run dev       # Start Vite dev server (port 5173)
-npm run build     # TypeScript check + Vite build
-npm run lint      # ESLint check
-```
+Environment: copy `frontend/.env.local.example` to `frontend/.env.local` and set `VITE_API_URL`.
 
-### Mobile (from `mobile app/` directory)
+### Mobile App (Flutter)
+
 ```bash
+cd "mobile app"
 flutter pub get
-flutter run
-flutter build apk
+flutter run               # Run on connected device/emulator
+flutter build apk         # Android APK
+flutter build appbundle   # Google Play bundle
+flutter build ios         # iOS (requires macOS)
 ```
 
-## Required Environment Variables
-
-```bash
-JWT_SECRET_KEY=<generate with: openssl rand -hex 32>
-OPENAI__API_KEY=<OpenAI API key>  # Note: double underscore
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/investment_portfolio
-```
+Environment: `assets/.env` — set `BASE_URL` and `OAUTH_BASE_URL` to the backend URL.
 
 ## Architecture
 
-### Backend Layers (Hexagonal/Clean Architecture)
-- **API Layer** (`app/api/endpoints/`) - FastAPI route handlers
-- **Domain Layer** (`app/domain/`) - Entities and value objects (Money, Percentage)
-- **Service Layer** (`app/services/`) - Business logic (PortfolioCalculator, AIAgents)
-- **Repository Layer** (`app/repositories/`) - Data access abstraction
-- **Infrastructure** (`app/clients/`) - External API clients (Yahoo Finance, OpenFIGI)
+### Frontend
 
-### Key Patterns
-- **Repository Pattern**: InvestmentRepository, UserRepository for data access
-- **Value Objects**: `Money` (amount + currency), `Percentage` with validation
-- **Domain Entities**: Investment with methods like `add_quantity()`, `calculate_total_cost()`
-- **Dependency Injection**: FastAPI's `Depends()` for sessions and auth
+**Entry**: `src/main.tsx` → `src/App.tsx` wraps everything in `AuthProvider` + `BrowserRouter`.
 
-### Authentication
-- JWT with HS256 algorithm (access token: 30 min, refresh token: 7 days)
-- Argon2 password hashing
-- HTTP Bearer token scheme
+**Routing** (`App.tsx`): Public routes (`/login`, `/signup`, `/auth/callback/:appName`) are open. All others are behind `ProtectedRoute` with a shared `Layout`.
 
-### External Integrations
-- **Yahoo Finance** (`app/clients/yahoo_finance.py`) - Real-time price data
-- **OpenAI** (`app/services/ai_agents.py`) - Investment recommendations using gpt-4.1
-- **Open FIGI** (`app/clients/open_figi.py`) - Security identifier lookup
+**Auth flow**: `AuthContext` holds user state, initialized from `localStorage` on mount. `authService` handles Google OAuth redirect and token storage. `api.ts` (Axios singleton) auto-injects the Bearer token and silently refreshes on 401 — concurrent refresh calls are deduplicated via a shared promise.
 
-## Database Schema
+**SSE streaming** (`recommendationsService.ts`): Uses native `fetch` (not Axios) for the recommendation stream. A `setTimeout(0)` yield after each chunk lets React flush state updates mid-stream.
 
-**Core Models** (in `app/models/`):
-- **User** - Email, password hash, risk tolerance (CONSERVATIVE/MODERATE/AGGRESSIVE), currency preference
-- **Investment** - Symbol, asset type (STOCK/ETF/CRYPTO/BOND/COMMODITY/REIT/MUTUAL_FUND), purchase details
-- **Transaction** - Investment transactions
-- **PriceHistory** - Historical price data
+**Path aliases**: `@components`, `@pages`, `@services`, `@contexts`, `@hooks`, `@utils`, `@types` all resolve to `src/` subdirectories (configured in `vite.config.ts` and mirrored in `tsconfig.app.json`).
 
-All models use UUID primary keys and include `created_at`/`updated_at` timestamps.
+**Key pages**: Portfolio, Investments, Watchlist, Recommendations (SSE stream), ReportHistory, Profile.
 
-## Frontend Architecture
+### Mobile App
 
-- **State Management**: React Context (AuthContext for auth state)
-- **Routing**: react-router-dom with protected routes
-- **Forms**: react-hook-form + Zod validation
-- **HTTP**: Axios (Vite proxies `/api` to backend at localhost:8000)
-- **Styling**: Tailwind CSS
-- **Charts**: Recharts
+**Architecture**: UI (Screens/Widgets) → Providers (ChangeNotifier) → Services → Dio HTTP client → Backend.
 
-## Mobile Architecture
+**Auth**: `flutter_web_auth_2` opens OAuth in a browser; deep link `investtrack://auth` returns the user to the app. Dio interceptors auto-inject JWT and refresh on 401.
 
-- **State**: Provider pattern
-- **Routing**: go_router
-- **HTTP**: Dio
-- **Auth**: flutter_web_auth_2 for OAuth
-- **Storage**: flutter_secure_storage for tokens
+**SSE**: Recommendation workflow streams from the backend via chunked HTTP read.
 
-## AI Recommendations
+**State**: Provider pattern — no nested BuildContext dependencies; providers are registered at the app root in `main.dart`.
 
-The recommendation service (`app/services/ai_agents.py`) uses a multi-step workflow:
-1. Analyzes user's portfolio and preferences
-2. Fetches market data
-3. Generates personalized recommendations via OpenAI
-4. Applies ethical exclusions (fossil fuels, weapons, tobacco)
+### Backend Connection
+
+The backend is `myBackend` (separate repo), deployed on Render. Key endpoints used:
+- `GET /investment/recommendations/generate/v2` — SSE stream
+- `GET /investment/models` — available AI models
+- `POST /auth/refresh-token` — token refresh (header: `X-Refresh-Token`)
+- Standard CRUD under `/investment/`, `/portfolio/`, `/watchlist/`, `/users/`
