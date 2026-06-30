@@ -13,6 +13,7 @@ import 'services/recommendations_service.dart';
 import 'services/users_service.dart';
 import 'services/watchlist_service.dart';
 import 'services/report_service.dart';
+import 'services/notification_service.dart';
 import 'core/constants/api_constants.dart';
 import 'providers/auth_provider.dart';
 import 'providers/portfolio_provider.dart';
@@ -65,6 +66,13 @@ void main() async {
 
   // Initialize auth state (check stored tokens)
   await authProvider.initAuth();
+
+  // Register for daily push notifications once authenticated
+  if (authProvider.isAuthenticated) {
+    await NotificationService().initialize(
+      onToken: usersService.registerDeviceToken,
+    );
+  }
 
   // Pre-load investment profile once backend is confirmed ready
   final profileProvider = ProfileProvider(usersService);

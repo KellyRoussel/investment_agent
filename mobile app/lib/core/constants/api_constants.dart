@@ -45,4 +45,7 @@ class ApiConstants {
 
   // Report history
   static const reportHistory = '/investment/recommendations/history';
+
+  // Push notifications
+  static const deviceToken = '/notifications/device-token';
 }

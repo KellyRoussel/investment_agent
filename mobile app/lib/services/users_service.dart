@@ -31,4 +31,13 @@ class UsersService {
     if (data == null) return null;
     return InvestmentProfile.fromJson(data);
   }
+
+  /// Register the device's FCM push token with the backend (auth header injected
+  /// by [ApiClient]'s interceptor).
+  Future<void> registerDeviceToken(String token) async {
+    await _api.post(
+      ApiConstants.deviceToken,
+      data: {'push_token': token, 'device_type': 'android'},
+    );
+  }
 }

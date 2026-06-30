@@ -5,6 +5,7 @@ import 'core/theme/app_theme.dart';
 import 'navigation/app_router.dart';
 import 'providers/auth_provider.dart';
 import 'providers/warmup_provider.dart';
+import 'services/notification_service.dart';
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -22,6 +23,8 @@ class _AppState extends State<App> {
     final authProvider = context.read<AuthProvider>();
     final warmupProvider = context.read<WarmupProvider>();
     _router = AppRouter.create(authProvider, warmupProvider);
+    // Expose the router so notification taps can navigate.
+    notificationRouter = _router;
   }
 
   @override
