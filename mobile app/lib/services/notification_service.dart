@@ -12,7 +12,8 @@ GoRouter? notificationRouter;
 /// (configured via the Google Services Gradle plugin), so no generated
 /// `firebase_options.dart` is required.
 class NotificationService {
-  final _messaging = FirebaseMessaging.instance;
+  // Resolved lazily so `.instance` is only accessed after [Firebase.initializeApp].
+  FirebaseMessaging get _messaging => FirebaseMessaging.instance;
 
   /// Initialize Firebase, request permission, register the token via [onToken]
   /// and keep it in sync on refresh. Failures are swallowed (push is non-critical).
